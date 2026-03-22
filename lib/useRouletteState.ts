@@ -97,7 +97,8 @@ export function useRouletteState() {
         }, 200)
         pendingRef.current.set(id, (r) => { clearTimeout(timer); res(r) })
       })
-      workerRef.current.postMessage({ id, history, bankroll, initialDeposit })
+      const profit = bankroll - initialDeposit
+      workerRef.current.postMessage({ id, history, bankroll, initialDeposit, profit })
       promise.then(result => {
         setState(prev => ({ ...prev, lastEngineResult: result }))
         // Haptic for signal change

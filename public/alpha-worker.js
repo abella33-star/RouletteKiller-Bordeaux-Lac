@@ -293,14 +293,21 @@ function processData(history, bankroll, initialDeposit, profit) {
   if (!pTest.isNoise)  parts.push(`Signal parité p=${pTest.pValue.toFixed(3)}`);
   const reason = parts.join(' + ');
 
-  const status = confidence >= 70 ? 'PLAY' : 'WAIT';
+  let status;
+  if (confidence >= 90) status = 'KILLER';
+  else if (confidence >= 70) status = 'PLAY';
+  else status = 'WAIT';
+
+  const type = strat.phase === 'Sniper'
+    ? '🎯 Smart Splits SNIPER'
+    : `Smart Splits Prudent`;
 
   return _out(
     status,
     Math.round(confidence * 10) / 10,
     {
       target,
-      type:          `Smart Splits (${strat.phase})`,
+      type,
       splits:        strat.splits,
       bet_per_split: strat.betPerSplit,
       bet_value:     strat.totalBet,
