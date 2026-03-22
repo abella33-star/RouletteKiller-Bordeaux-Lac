@@ -1,6 +1,5 @@
 'use client'
 import { useMemo } from 'react'
-import { getColor } from '@/lib/constants'
 import type { Spin } from '@/lib/types'
 
 interface Props {
@@ -9,30 +8,21 @@ interface Props {
   disabled:    boolean
 }
 
-// Casino tableau layout: 3 rows × 12 cols (top = high numbers)
+// Casino tableau: 3 rows × 12 cols
 const ROWS: number[][] = [
   [3,  6,  9,  12, 15, 18, 21, 24, 27, 30, 33, 36],
   [2,  5,  8,  11, 14, 17, 20, 23, 26, 29, 32, 35],
   [1,  4,  7,  10, 13, 16, 19, 22, 25, 28, 31, 34],
 ]
-
-// Roulette red numbers
 const REDS = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36])
 
-function numBg(n: number, isLast: boolean, isPrev: boolean): string {
-  if (isLast) return '#00E676'   // neon green highlight
-  const base = n === 0 ? '#065f46' : REDS.has(n) ? '#7f1d1d' : '#1a1a1a'
-  return isPrev ? base + 'aa' : base
+function bg(n: number, isLast: boolean): string {
+  if (isLast) return '#00E676'
+  if (n === 0) return '#14532d'
+  return REDS.has(n) ? '#7f1d1d' : '#1c1c1c'
 }
 
-function numText(n: number, isLast: boolean): string {
-  if (isLast) return '#000'
-  return '#fff'
-}
-
-function vibrate() {
-  try { window.navigator.vibrate(10) } catch {}
-}
+function vibrate() { try { window.navigator.vibrate(10) } catch {} }
 
 export default function NumberPad({ onSpin, recentSpins, disabled }: Props) {
   const lastHit = recentSpins[recentSpins.length - 1]?.number ?? null
@@ -47,38 +37,42 @@ export default function NumberPad({ onSpin, recentSpins, disabled }: Props) {
     onSpin(n)
   }
 
-  const btnBase = `
-    flex items-center justify-center rounded
-    text-xs font-black select-none cursor-pointer
-    active:scale-90 transition-transform duration-75
-    border border-[#222]
-  `
-
   return (
-    <div className="flex flex-col gap-1 h-full">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, height: '100%' }}>
 
-      {/* ── Zero: full-width, fixed height (NEVER aspect-square) ── */}
+      {/* Zero: full-width, fixed 30px height */}
       <button
         onClick={() => handleTap(0)}
         disabled={disabled}
         style={{
-          background: numBg(0, lastHit === 0, false),
-          color:      numText(0, lastHit === 0),
-          height:     '2rem',
-          width:      '100%',
           flexShrink: 0,
-          aspectRatio: 'unset',
+          height: 30,
+          width: '100%',
+          background: bg(0, lastHit === 0),
+          color: lastHit === 0 ? '#000' : '#fff',
+          border: lastHit === 0 ? '2px solid #00E676' : '1px solid #333',
+          borderRadius: 5,
+          fontWeight: 900,
+          fontSize: 13,
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          userSelect: 'none',
         }}
-        className={btnBase + (lastHit === 0 ? ' ring-2 ring-[#00E676]' : '')}
-        aria-label="0"
       >
         0
       </button>
 
-      {/* ── 1–36 grid: 12 columns × 3 rows ── */}
+      {/* 1–36 grid — 12 columns forced via inline styles only */}
       <div
-        className="grid gap-0.5 flex-1"
-        style={{ gridTemplateColumns: 'repeat(12, 1fr)' }}
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(12, minmax(0, 1fr))',
+          gap: 3,
+          flex: 1,
+          alignContent: 'start',
+        }}
       >
         {ROWS.flat().map(n => {
           const isLast = n === lastHit
@@ -89,19 +83,30 @@ export default function NumberPad({ onSpin, recentSpins, disabled }: Props) {
               onClick={() => handleTap(n)}
               disabled={disabled}
               style={{
-                background:  numBg(n, isLast, isPrev),
-                color:       numText(n, isLast),
                 aspectRatio: '1 / 1',
-                width:       '100%',
+                width: '100%',
+                background: bg(n, isLast),
+                color: isLast ? '#000' : '#fff',
+                opacity: isPrev ? 0.5 : 1,
+                border: isLast ? '2px solid #00E676' : '1px solid #2a2a2a',
+                borderRadius: 4,
+                fontWeight: 900,
+                fontSize: 9,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: 0,
+                userSelect: 'none',
+                WebkitUserSelect: 'none',
               }}
-              className={btnBase + (isLast ? ' ring-2 ring-[#00E676] z-10' : '')}
-              aria-label={String(n)}
             >
               {n}
             </button>
           )
         })}
       </div>
+
     </div>
   )
 }
