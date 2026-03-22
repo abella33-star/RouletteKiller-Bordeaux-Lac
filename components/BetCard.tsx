@@ -75,6 +75,15 @@ export default function BetCard({ result, bankroll, profit }: Props) {
         </div>
       )}
 
+      {/* Bankroll context */}
+      <div className="flex justify-between text-[9px] text-muted" style={{ marginTop: 2 }}>
+        <span>Bankroll: {fmt(bankroll)}</span>
+        <span className={profit >= 0 ? 'text-neon' : 'text-crimson'}>
+          Profit: {profit >= 0 ? '+' : ''}{fmt(profit)}
+        </span>
+        <span>{r.num_bets} positions · {fmt(r.bet_per_split)}/pos</span>
+      </div>
+
     </div>
   )
 }
