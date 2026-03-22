@@ -1,0 +1,24 @@
+{
+  "name": "RouletteKiller — Bordeaux Alpha",
+  "short_name": "RK Alpha",
+  "description": "Moteur décisionnel ELITE pour roulette électronique Alfastreet",
+  "start_url": "/",
+  "id": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "fullscreen"],
+  "orientation": "portrait",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "categories": ["utilities"],
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='48' fill='%23000'/><text y='65' x='50' text-anchor='middle' font-size='60' fill='%23FFD700'>⚡</text></svg>",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "related_applications": [],
+  "prefer_related_applications": false
+}

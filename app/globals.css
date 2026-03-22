@@ -1,0 +1,123 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Safe area variables ────────────────────────────────────── */
+:root {
+  --sat: env(safe-area-inset-top, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+}
+
+/* ── Base ───────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #000;
+  color: #F5F5F5;
+  font-family: 'SF Pro Display', 'JetBrains Mono', 'Fira Code', system-ui, monospace;
+  -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
+  overscroll-behavior: none;
+  /* Prevent bounce/pull-to-refresh */
+  overflow: hidden;
+  height: 100%;
+  width: 100%;
+}
+
+#__next, main {
+  height: 100dvh;   /* dynamic viewport height — accounts for Safari toolbar */
+  overflow: hidden;
+}
+
+/* ── Dynamic Island / Safe areas ───────────────────────────── */
+.safe-top    { padding-top: var(--sat); }
+.safe-bottom { padding-bottom: var(--sab); }
+.safe-sides  { padding-left: var(--sal); padding-right: var(--sar); }
+
+/* ── Scrollable inner zones ─────────────────────────────────── */
+.scroll-zone {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Custom scrollbar (hidden) ──────────────────────────────── */
+.scroll-zone::-webkit-scrollbar { display: none; }
+.scroll-zone { scrollbar-width: none; }
+
+/* ── Tailwind layers ────────────────────────────────────────── */
+@layer components {
+
+  /* Card */
+  .rk-card {
+    @apply bg-card border border-border rounded-2xl p-3;
+  }
+
+  /* Section label */
+  .rk-label {
+    @apply text-[9px] font-black tracking-[2px] text-muted uppercase mb-1;
+  }
+
+  /* Status pill */
+  .pill-wait   { @apply bg-[#111] text-muted border border-border; }
+  .pill-play   { @apply bg-neon/10 text-neon border border-neon/40; }
+  .pill-killer { @apply bg-gold/15 text-gold border border-gold/50; }
+  .pill-noise  { @apply bg-crimson/10 text-crimson border border-crimson/40; }
+
+  /* Number button */
+  .num-btn {
+    @apply rounded-lg text-sm font-black select-none active:scale-95
+           transition-transform duration-75 cursor-pointer
+           flex items-center justify-center aspect-square;
+  }
+  .num-rouge  { @apply bg-[#8B1A1A] text-white; }
+  .num-noir   { @apply bg-[#1A1A1A] text-white; }
+  .num-zero   { @apply bg-[#006400] text-white; }
+  .num-hit    { @apply ring-2 ring-neon scale-110 shadow-[0_0_12px_rgba(0,230,118,0.8)]; }
+
+  /* Giant control buttons */
+  .btn-giant {
+    @apply flex items-center justify-center gap-2 rounded-2xl font-black
+           text-base tracking-wider py-4 active:scale-95 transition-all duration-100
+           select-none cursor-pointer;
+  }
+  .btn-reset  { @apply bg-[#1A1A1A] text-muted border border-border; }
+  .btn-undo   { @apply bg-[#1A0000] text-crimson border border-crimson/30; }
+
+  /* Confidence bar */
+  .conf-track { @apply h-1.5 bg-border rounded-full overflow-hidden; }
+  .conf-fill  { @apply h-full rounded-full transition-all duration-500; }
+}
+
+/* ── Glow animations ────────────────────────────────────────── */
+@keyframes glowGreen {
+  0%,100% { box-shadow: 0 0  8px rgba(0,230,118,0.3); }
+  50%     { box-shadow: 0 0 24px rgba(0,230,118,0.9); }
+}
+@keyframes glowGold {
+  0%,100% { box-shadow: 0 0 12px rgba(255,215,0,0.4); }
+  50%     { box-shadow: 0 0 32px rgba(255,215,0,1.0); }
+}
+@keyframes pulse-ring {
+  0%   { transform: scale(1);   opacity: 1; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+@keyframes blink {
+  0%,100% { opacity: 1; }
+  50%     { opacity: 0.3; }
+}
+
+.glow-green  { animation: glowGreen  2s ease-in-out infinite; }
+.glow-gold   { animation: glowGold   0.7s ease-in-out infinite; }
+.blink-anim  { animation: blink      1s ease-in-out infinite; }
+
+/* ── Sector heatmap ─────────────────────────────────────────── */
+.heatmap-wedge {
+  transition: fill 0.8s ease, filter 0.8s ease;
+}
+.heatmap-wedge:active {
+  filter: brightness(1.4);
+}
