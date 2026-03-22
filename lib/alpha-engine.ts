@@ -31,26 +31,42 @@ function chiSqPValue(chi2: number, df: number): number {
 
 // ── Sector statistics ─────────────────────────────────────────
 
+// Exponential decay weighting: most recent spin = weight 1, older = ×λ each step
+// λ=0.4 → dernier numéro saisi domine fortement, l'historique s'efface vite
+const RECENCY_LAMBDA = 0.4
+
 function zScore(win: Spin[], nums: number[]): number {
   const n = win.length
-  const k = win.filter(s => nums.includes(s.number)).length
+  if (n === 0) return 0
   const p = nums.length / 37
-  const sigma = Math.sqrt(n * p * (1 - p))
-  return sigma > 0 ? (k - n * p) / sigma : 0
+  let nEff = 0, kEff = 0
+  for (let i = 0; i < n; i++) {
+    const w = Math.pow(RECENCY_LAMBDA, n - 1 - i) // oldest→lowest weight, newest→1.0
+    nEff += w
+    if (nums.includes(win[i].number)) kEff += w
+  }
+  const sigma = Math.sqrt(nEff * p * (1 - p))
+  return sigma > 0 ? (kEff - nEff * p) / sigma : 0
 }
 
 function bayesianPosterior(win: Spin[], nums: number[], m = 4): number {
   const n = win.length
-  const k = win.filter(s => nums.includes(s.number)).length
+  if (n === 0) return nums.length / 37
   const p = nums.length / 37
-  return (k + p * m) / (n + m)
+  let nEff = 0, kEff = 0
+  for (let i = 0; i < n; i++) {
+    const w = Math.pow(RECENCY_LAMBDA, n - 1 - i)
+    nEff += w
+    if (nums.includes(win[i].number)) kEff += w
+  }
+  return (kEff + p * m) / (nEff + m)
 }
 
 function sectorConfidence(win: Spin[], nums: number[]): number {
   if (win.length < 1) return 0
   const Z = zScore(win, nums)
   if (Z <= 0) return 0
-  // Ultra-sensitivity: pas de dampening — réagit dès Z≥0.1
+  // Ultra-sensitivity + recency bias: réagit dès le dernier numéro saisi
   return Math.min(100, Math.max(0, Z * 40))
 }
 

@@ -64,16 +64,34 @@ function chiSqPValue(chi2, df) {
 //  SECTOR STATISTICS (same kernel as Bordeaux engine)
 // ───────────────────────────────────────────────────────────────
 
+// Exponential decay weighting: most recent spin = weight 1, older = ×λ each step
+const RECENCY_LAMBDA = 0.4;
+
 function zScore(win, nums) {
-  const n = win.length, k = win.filter(s => nums.includes(s.number)).length;
-  const p = nums.length / 37, sigma = Math.sqrt(n * p * (1 - p));
-  return sigma > 0 ? (k - n * p) / sigma : 0;
+  const n = win.length;
+  if (n === 0) return 0;
+  const p = nums.length / 37;
+  let nEff = 0, kEff = 0;
+  for (let i = 0; i < n; i++) {
+    const w = Math.pow(RECENCY_LAMBDA, n - 1 - i);
+    nEff += w;
+    if (nums.includes(win[i].number)) kEff += w;
+  }
+  const sigma = Math.sqrt(nEff * p * (1 - p));
+  return sigma > 0 ? (kEff - nEff * p) / sigma : 0;
 }
 
 function bayesianPosterior(win, nums, m = 4) {
-  const n = win.length, k = win.filter(s => nums.includes(s.number)).length;
+  const n = win.length;
+  if (n === 0) return nums.length / 37;
   const p = nums.length / 37;
-  return (k + p * m) / (n + m);
+  let nEff = 0, kEff = 0;
+  for (let i = 0; i < n; i++) {
+    const w = Math.pow(RECENCY_LAMBDA, n - 1 - i);
+    nEff += w;
+    if (nums.includes(win[i].number)) kEff += w;
+  }
+  return (kEff + p * m) / (nEff + m);
 }
 
 /** Composite confidence score [0–100] for a sector */
@@ -81,7 +99,7 @@ function sectorConfidence(win, nums) {
   if (win.length < 1) return 0;
   const Z = zScore(win, nums);
   if (Z <= 0) return 0;
-  // Ultra-sensitivity: pas de dampening — réagit dès Z≥0.1
+  // Ultra-sensitivity + recency bias: réagit dès le dernier numéro saisi
   return Math.min(100, Math.max(0, Z * 40));
 }
 
