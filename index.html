@@ -30,6 +30,25 @@
     </div>
   </div>
 
+  <!-- VICTORY — TAKE PROFIT OVERLAY -->
+  <div id="victory-overlay" class="overlay hidden">
+    <div class="overlay-content victory-content">
+      <div class="big-icon victory-pulse">💰</div>
+      <h2 class="overlay-title victory-title">VICTOIRE</h2>
+      <div class="victory-sub">ENCAISSE ET SORS</div>
+      <div id="victory-stats" class="victory-stats"></div>
+      <p class="victory-msg">
+        Tu as atteint <strong>4× ton dépôt initial</strong>.<br>
+        Le moteur a détecté l'objectif optimal.<br>
+        <em>Un joueur discipliné sait quand s'arrêter.</em>
+      </p>
+      <div class="victory-actions">
+        <button class="btn-gold victory-btn" onclick="acknowledgeVictory()">✓ ENCAISSER</button>
+        <button class="btn-outline mt-sm" onclick="continueAfterVictory()">Continuer quand même</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ANTI-TILT OVERLAY -->
   <div id="antitilt-overlay" class="overlay hidden">
     <div class="overlay-content">
@@ -212,6 +231,78 @@
       <div class="decision-footer" id="decision-footer"></div>
     </div>
 
+    <!-- ALPHA-PREDATOR ENGINE CARD -->
+    <div class="card alpha-card" id="alpha-card">
+      <div class="section-title">
+        ALPHA-PREDATOR ENGINE
+        <div style="display:flex;gap:6px;align-items:center">
+          <span class="alpha-badge">OPTIMAL</span>
+          <span class="latency-tag" id="ap-latency">—ms</span>
+        </div>
+      </div>
+
+      <!-- Status row -->
+      <div class="ap-status-row">
+        <div class="ap-status-pill" id="ap-status-pill">WAIT</div>
+        <div class="ap-bar-track">
+          <div class="ap-bar-fill" id="ap-bar-fill" style="width:0%"></div>
+        </div>
+        <span class="ap-conf" id="ap-conf">0%</span>
+        <span class="ap-phase-tag" id="ap-phase"></span>
+      </div>
+
+      <!-- Main details -->
+      <div class="ap-details">
+        <div class="ap-detail ap-detail-wide">
+          <div class="ap-dval" id="ap-target">—</div>
+          <div class="ap-dlbl">CIBLE DÉTECTÉE</div>
+        </div>
+        <div class="ap-detail">
+          <div class="ap-dval gold" id="ap-bet">—</div>
+          <div class="ap-dlbl">MISE TOTALE</div>
+        </div>
+        <div class="ap-detail">
+          <div class="ap-dval" id="ap-gain">—</div>
+          <div class="ap-dlbl">GAIN POTENTIEL</div>
+        </div>
+      </div>
+
+      <!-- Smart Splits -->
+      <div id="ap-splits-section" class="ap-splits-section hidden">
+        <div class="ap-splits-title">SMART SPLITS</div>
+        <div id="ap-splits" class="ap-splits"></div>
+        <div class="ap-splits-note" id="ap-splits-note"></div>
+      </div>
+
+      <!-- Chi-Square indicators -->
+      <div class="ap-chi-row">
+        <div class="ap-chi-item" id="ap-chi-color">
+          <span class="ap-chi-label">χ² couleurs</span>
+          <span class="ap-chi-val" id="ap-chi-color-val">p=—</span>
+        </div>
+        <div class="ap-chi-item" id="ap-chi-parity">
+          <span class="ap-chi-label">χ² parité</span>
+          <span class="ap-chi-val" id="ap-chi-parity-val">p=—</span>
+        </div>
+        <div class="ap-chi-item" id="ap-offset-item">
+          <span class="ap-chi-label">Signature mécanique</span>
+          <span class="ap-chi-val" id="ap-offset-val">—</span>
+        </div>
+      </div>
+
+      <!-- Sector Z-Bars -->
+      <div class="ap-sectors" id="ap-sectors"></div>
+
+      <!-- Reason -->
+      <div class="ap-reason" id="ap-reason">En attente des données…</div>
+
+      <!-- Buffer info + Reset -->
+      <div class="ap-footer">
+        <span class="ap-buf-info" id="ap-buf-info">Buffer: 0/36</span>
+        <button class="ap-reset-btn" onclick="resetCycle()">↺ RESET CYCLE</button>
+      </div>
+    </div>
+
     <!-- BORDEAUX CORE ENGINE CARD -->
     <div class="card bx-card" id="bordeaux-card">
       <div class="section-title">
@@ -316,6 +407,7 @@
   </div>
 
   <script src="js/engines.js"></script>
+  <script src="js/alpha-engine.js"></script>
   <script src="js/bordeaux-engine.js"></script>
   <script src="js/app.js"></script>
 </body>

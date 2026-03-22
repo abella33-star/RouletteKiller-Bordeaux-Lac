@@ -10,6 +10,7 @@ let state = {
   spins: [],
   startBankroll: 1000,
   currentBankroll: 1000,
+  initialDeposit: 1000,     // First bankroll ever set (Take Profit reference)
   wins: 0,
   losses: 0,
   totalSpins: 0,
@@ -23,6 +24,7 @@ let state = {
   antitiltActive: false,
   antitiltTimer: null,
   antitiltRemaining: 120,
+  victoryShown: false,      // prevent repeat victory modal
   // --- Signal expiry ---
   signalExpired: false,
   lastSpinTimestamp: 0,    // ms epoch; 0 = no spin yet
@@ -69,6 +71,7 @@ function save() {
       spins: state.spins,
       startBankroll: state.startBankroll,
       currentBankroll: state.currentBankroll,
+      initialDeposit: state.initialDeposit,
       wins: state.wins,
       losses: state.losses,
       totalSpins: state.totalSpins,
@@ -80,7 +83,8 @@ function save() {
       x2Mode: state.x2Mode,
       streakSessions: state.streakSessions,
       lastSpinTimestamp: state.lastSpinTimestamp,
-      signalExpired: state.signalExpired
+      signalExpired: state.signalExpired,
+      victoryShown: state.victoryShown
     }));
   } catch (e) {}
 }
@@ -187,10 +191,12 @@ function resumeWithClear() {
   state.signalExpired = false;
   state.lastSpinTimestamp = 0;
   state.idleSeconds = 0;
+  if (window.alphaEngine) window.alphaEngine.buffer.clear();
   document.getElementById('signal-expired-overlay').classList.add('hidden');
   stopIdleTimer();
   save();
   refresh();
+  triggerAlpha();
 }
 
 function resumeWithHistory() {
@@ -243,8 +249,12 @@ function addSpin(number) {
     setTimeout(() => flash.remove(), 300);
   }
 
+  // Push to Alpha engine buffer
+  if (window.alphaEngine) window.alphaEngine.push(spin);
+
   save();
   refresh();
+  triggerAlpha();
   triggerBordeaux();
 }
 
@@ -264,6 +274,7 @@ function recordResult(won, stake) {
     state.discipline = Math.max(0, state.discipline - 10);
     if (state.consecutiveLosses >= PROFILES[state.selectedProfile].maxLosses) triggerAntiTilt();
   }
+  checkTakeProfit();
   save();
   refresh();
 }
@@ -643,6 +654,8 @@ function applySettings() {
   if (!isNaN(val) && val > 0) {
     state.startBankroll = val;
     state.currentBankroll = val;
+    state.initialDeposit = val;   // lock the Take-Profit reference
+    state.victoryShown = false;
     if (navigator.vibrate) navigator.vibrate([50, 30, 50]);
   }
   const modes = ['safe', 'adaptatif', 'attaque_max'];
@@ -672,6 +685,7 @@ function newSession() {
   state.signalExpired = false;
   state.lastSpinTimestamp = 0;
   state.idleSeconds = 0;
+  if (window.alphaEngine) window.alphaEngine.buffer.clear();
   stopIdleTimer();
   document.getElementById('celebration-overlay').classList.add('hidden');
   document.getElementById('signal-expired-overlay').classList.add('hidden');
@@ -734,6 +748,214 @@ function runBacktest() {
           </div>
         </div>`;
     }).join('') + '</div>';
+}
+
+// ===== ALPHA-PREDATOR ENGINE RENDERING =====
+
+function renderAlpha(result) {
+  if (!result) return;
+
+  const statusRaw = result.status.toLowerCase();
+  const conf      = result.confidence;
+  const phase     = (result.phase || '').toLowerCase();
+  const r         = result.recommendation || {};
+
+  // Colour palette per status
+  const color = statusRaw === 'play' ? '#00E676' : statusRaw === 'noise' ? '#E30613' : '#555';
+
+  // Status pill
+  const pill = document.getElementById('ap-status-pill');
+  pill.textContent = result.status;
+  pill.className   = `ap-status-pill ${statusRaw}`;
+
+  // Confidence bar
+  document.getElementById('ap-bar-fill').style.cssText = `width:${conf}%;background:${color}`;
+  const confEl = document.getElementById('ap-conf');
+  confEl.textContent = `${conf}%`;
+  confEl.style.color = color;
+
+  // Phase tag
+  const phaseEl = document.getElementById('ap-phase');
+  phaseEl.textContent = phase ? phase.toUpperCase() : '';
+  phaseEl.className = `ap-phase-tag ${phase}`;
+
+  // Target
+  const targEl = document.getElementById('ap-target');
+  targEl.textContent   = r.target || '—';
+  targEl.style.color   = statusRaw === 'play' ? 'var(--green)' : statusRaw === 'noise' ? 'var(--red)' : 'var(--text)';
+
+  // Bet value + gain
+  const betEl  = document.getElementById('ap-bet');
+  const gainEl = document.getElementById('ap-gain');
+  if (r.bet_value > 0) {
+    betEl.textContent  = `${fmt(r.bet_value)} (${r.num_bets}×${fmt(r.bet_per_split)})`;
+    gainEl.textContent = result.potential_gain > 0 ? `+${fmt(result.potential_gain)}` : '—';
+    gainEl.style.color = result.potential_gain > 0 ? 'var(--green)' : 'var(--muted)';
+  } else {
+    betEl.textContent  = '—';
+    gainEl.textContent = '—';
+    gainEl.style.color = 'var(--muted)';
+  }
+
+  // Smart Splits section
+  const splitsSection = document.getElementById('ap-splits-section');
+  const splitsContainer = document.getElementById('ap-splits');
+  splitsContainer.innerHTML = '';
+  if (r.splits && r.splits.length > 0 && statusRaw === 'play') {
+    splitsSection.classList.remove('hidden');
+    r.splits.forEach(s => {
+      const chip = document.createElement('span');
+      chip.className = 'ap-split-chip' + (s.includes('plein') ? ' plein' : '');
+      chip.textContent = s;
+      splitsContainer.appendChild(chip);
+    });
+    document.getElementById('ap-splits-note').textContent =
+      `${r.bet_per_split > 0 ? fmt(r.bet_per_split) : '—'} par mise · ${r.num_bets} positions couvertes`;
+  } else {
+    splitsSection.classList.add('hidden');
+  }
+
+  // Chi-square indicators
+  _renderChiVal('ap-chi-color-val', result.colorTest);
+  _renderChiVal('ap-chi-parity-val', result.parityTest);
+
+  // Mechanical offset
+  const offEl = document.getElementById('ap-offset-val');
+  const off   = result.offsetAnalysis;
+  if (off && off.detected) {
+    offEl.textContent  = `~${off.center} cases ×${off.count}`;
+    offEl.className    = 'ap-chi-val active';
+    document.getElementById('ap-offset-item').style.background = 'rgba(255,152,0,0.05)';
+  } else if (off && off.total >= 3) {
+    offEl.textContent  = `Aucun (${off.total} spins)`;
+    offEl.className    = 'ap-chi-val';
+  } else {
+    offEl.textContent  = '< 3 spins';
+    offEl.className    = 'ap-chi-val';
+  }
+
+  // Sector Z-bars
+  const secContainer = document.getElementById('ap-sectors');
+  secContainer.innerHTML = '';
+  const sectorLabels = { voisins: 'Voisins (17)', tiers: 'Tiers (12)', orphelins: 'Orphelins (8)' };
+  if (result.sectors) {
+    for (const [key, data] of Object.entries(result.sectors)) {
+      const Z   = data.Z;
+      const pct = Math.min(100, Math.max(0, (Z / 3) * 100));
+      const fc  = Z < 0 ? '#333' : Z < 1 ? '#555' : Z < 2 ? 'var(--orange)' : 'var(--green)';
+      const row = document.createElement('div');
+      row.className = 'ap-s-row';
+      row.innerHTML = `
+        <span class="ap-s-name">${sectorLabels[key] || key}</span>
+        <div class="ap-s-track"><div class="ap-s-fill" style="width:${Math.max(0,pct)}%;background:${fc}"></div></div>
+        <span class="ap-s-z" style="color:${Z>=2?'var(--green)':Z>=1?'var(--orange)':'var(--muted)'}">${Z>=0?'+':''}${Z.toFixed(2)}σ</span>
+        <span class="ap-s-post">${(data.posterior*100).toFixed(0)}%</span>`;
+      secContainer.appendChild(row);
+    }
+  }
+
+  // Reason
+  const reasonEl = document.getElementById('ap-reason');
+  reasonEl.textContent = result.reason;
+  reasonEl.className   = `ap-reason ${statusRaw}`;
+
+  // Buffer info
+  if (window.alphaEngine) {
+    const n = window.alphaEngine.buffer.length;
+    document.getElementById('ap-buf-info').textContent = `Buffer: ${n}/36 spins`;
+  }
+
+  // Latency
+  const latTag = document.getElementById('ap-latency');
+  if (result.latency !== undefined) {
+    latTag.textContent = `${result.latency}ms`;
+    latTag.style.color = result.latency < 20 ? 'var(--green)' : result.latency < 50 ? 'var(--orange)' : 'var(--red)';
+  }
+}
+
+function _renderChiVal(elId, test) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  if (!test) { el.textContent = 'p=—'; el.className = 'ap-chi-val'; return; }
+  el.textContent = `p=${test.pValue.toFixed(3)}`;
+  el.className   = `ap-chi-val ${test.isNoise ? 'noise' : 'ok'}`;
+}
+
+function triggerAlpha() {
+  if (!window.alphaEngine) return;
+  const profit = state.currentBankroll - state.startBankroll;
+  window.alphaEngine
+    .analyze(state.currentBankroll, state.initialDeposit, profit)
+    .then(renderAlpha)
+    .catch(() => {});
+}
+
+// ===== TAKE PROFIT — CIRCUIT BREAKER =====
+
+/**
+ * Check if bankroll has reached 4× the initial deposit.
+ * Called after every recordResult().
+ */
+function checkTakeProfit() {
+  if (state.victoryShown) return;
+  if (state.initialDeposit <= 0) return;
+  if (state.currentBankroll >= state.initialDeposit * 4) {
+    state.victoryShown = true;
+    showVictoryOverlay();
+  }
+}
+
+function showVictoryOverlay() {
+  const profit  = state.currentBankroll - state.initialDeposit;
+  const mult    = (state.currentBankroll / state.initialDeposit).toFixed(2);
+  const wlRatio = state.losses > 0 ? (state.wins / state.losses).toFixed(2) : '∞';
+  document.getElementById('victory-stats').innerHTML =
+    `<div>Dépôt initial <strong>${fmt(state.initialDeposit)}</strong></div>` +
+    `<div>Bankroll actuelle <strong class="gold">${fmt(state.currentBankroll)}</strong></div>` +
+    `<div>Profit net <strong style="color:var(--green)">+${fmt(profit)}</strong></div>` +
+    `<div>Multiplicateur <strong class="gold">×${mult}</strong></div>` +
+    `<div>Ratio V/L <strong>${wlRatio}</strong></div>`;
+  const ov = document.getElementById('victory-overlay');
+  ov.classList.remove('hidden');
+  if (navigator.vibrate) navigator.vibrate([100,50,100,50,200,100,500]);
+  save();
+}
+
+function acknowledgeVictory() {
+  document.getElementById('victory-overlay').classList.add('hidden');
+  newSession();
+}
+
+function continueAfterVictory() {
+  document.getElementById('victory-overlay').classList.add('hidden');
+}
+
+// ===== RESET CYCLE =====
+
+/**
+ * Clears the spin history (machine changed behaviour).
+ * Does NOT touch bankroll.
+ */
+function resetCycle() {
+  state.spins             = [];
+  state.totalSpins        = 0;
+  state.consecutiveLosses = 0;
+  state.consecutiveWins   = 0;
+  state.signalExpired     = false;
+  state.lastSpinTimestamp = 0;
+  state.idleSeconds       = 0;
+  stopIdleTimer();
+  if (window.alphaEngine)   window.alphaEngine.buffer.clear();
+  document.getElementById('signal-expired-overlay').classList.add('hidden');
+  document.getElementById('idle-warning').classList.add('hidden');
+  // Reset alpha card display
+  renderAlpha({ status:'WAIT', confidence:0,
+    recommendation:{ target:'—', type:'Cycle effacé', splits:[], bet_per_split:0, bet_value:0, num_bets:0 },
+    reason:'Cycle effacé — historique remis à zéro. Attente de nouveaux spins.',
+    potential_gain:0, phase:'—', sectors:null, colorTest:null, parityTest:null, offsetAnalysis:null, latency:0 });
+  if (navigator.vibrate) navigator.vibrate([30, 20, 30]);
+  save();
+  refresh();
 }
 
 // ===== BORDEAUX ENGINE RENDERING =====
@@ -831,7 +1053,12 @@ function init() {
     if (elapsed) elapsed.textContent = `Aucun spin depuis ${m}:${s}`;
     document.getElementById('signal-expired-overlay').classList.remove('hidden');
   }
+  // Rebuild Alpha CircularBuffer from persisted spin history
+  if (window.alphaEngine && state.spins.length > 0) {
+    window.alphaEngine.syncFromArray(state.spins);
+  }
   refresh();
+  triggerAlpha();
   triggerBordeaux();
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
 }

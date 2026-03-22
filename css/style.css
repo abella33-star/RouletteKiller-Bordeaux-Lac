@@ -303,6 +303,107 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
 .game-val { font-size: 18px; font-weight: 900; }
 .game-lbl { font-size: 10px; color: var(--muted); margin-top: 4px; }
 
+/* ===== ALPHA-PREDATOR ENGINE CARD ===== */
+.alpha-card { border-color: #1A0A2A; background: linear-gradient(150deg, #0A0A0E, #0E080E); }
+
+.alpha-badge {
+  font-size: 9px; font-weight: 900; letter-spacing: 1.5px;
+  background: linear-gradient(90deg, #4A00E0, #8B5CF6, #4A00E0);
+  color: #FFF; padding: 2px 7px; border-radius: 20px;
+}
+
+/* Status row */
+.ap-status-row  { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.ap-status-pill {
+  font-size: 11px; font-weight: 900; letter-spacing: 1.5px;
+  padding: 4px 10px; border-radius: 20px; min-width: 54px; text-align: center;
+  background: #222; color: var(--muted); transition: all 0.3s;
+}
+.ap-status-pill.play  { background: rgba(0,230,118,0.15); color: var(--green); border: 1px solid rgba(0,230,118,0.4); }
+.ap-status-pill.wait  { background: #1E1E1E; color: var(--muted); }
+.ap-status-pill.noise { background: rgba(227,6,19,0.15); color: var(--red); border: 1px solid rgba(227,6,19,0.4); animation: blink 1.2s ease-in-out infinite; }
+.ap-bar-track { flex: 1; height: 6px; background: #1A1A1A; border-radius: 3px; overflow: hidden; }
+.ap-bar-fill  { height: 100%; border-radius: 3px; transition: width 0.6s cubic-bezier(0.4,0,0.2,1), background 0.4s; }
+.ap-conf      { font-size: 13px; font-weight: 800; min-width: 36px; text-align: right; font-variant-numeric: tabular-nums; }
+.ap-phase-tag {
+  font-size: 9px; font-weight: 800; letter-spacing: 1px; padding: 2px 6px; border-radius: 4px;
+  background: #1A1A1A; color: var(--muted); white-space: nowrap;
+}
+.ap-phase-tag.aggressive { background: rgba(255,152,0,0.2); color: var(--orange); }
+.ap-phase-tag.safe       { background: rgba(0,230,118,0.1); color: var(--green); }
+
+/* Details */
+.ap-details     { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+.ap-detail      { background: #111; border-radius: 8px; padding: 8px 10px; text-align: center; }
+.ap-detail-wide { text-align: left; }
+.ap-dval        { font-size: 13px; font-weight: 800; }
+.ap-dlbl        { font-size: 9px; color: var(--muted); letter-spacing: 0.8px; margin-top: 2px; }
+
+/* Smart Splits */
+.ap-splits-section { background: #0D0D0D; border-radius: 8px; padding: 10px; margin-bottom: 10px; border: 1px solid #1E1E1E; }
+.ap-splits-section.hidden { display: none; }
+.ap-splits-title   { font-size: 10px; font-weight: 800; letter-spacing: 1.5px; color: var(--orange); margin-bottom: 8px; }
+.ap-splits         { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 6px; }
+.ap-split-chip     { font-size: 12px; font-weight: 700; padding: 5px 9px; border-radius: 6px; background: #1A1A1A; color: var(--text); border: 1px solid #2A2A2A; }
+.ap-split-chip.plein { background: rgba(255,215,0,0.1); color: #FFD700; border-color: rgba(255,215,0,0.3); }
+.ap-splits-note    { font-size: 10px; color: var(--muted); }
+
+/* Chi-square indicators */
+.ap-chi-row   { display: flex; gap: 6px; margin-bottom: 10px; }
+.ap-chi-item  { flex: 1; background: #111; border-radius: 6px; padding: 6px 8px; text-align: center; }
+.ap-chi-label { display: block; font-size: 8px; color: var(--muted); letter-spacing: 0.5px; margin-bottom: 2px; }
+.ap-chi-val   { font-size: 11px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.ap-chi-val.ok     { color: var(--green); }
+.ap-chi-val.noise  { color: var(--red); }
+.ap-chi-val.active { color: var(--orange); }
+
+/* Sector bars */
+.ap-sectors { display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px; }
+.ap-s-row   { display: flex; align-items: center; gap: 8px; }
+.ap-s-name  { font-size: 10px; color: var(--muted); width: 80px; flex-shrink: 0; }
+.ap-s-track { flex: 1; height: 5px; background: #1E1E1E; border-radius: 3px; overflow: hidden; }
+.ap-s-fill  { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
+.ap-s-z     { font-size: 10px; font-weight: 700; width: 40px; text-align: right; font-variant-numeric: tabular-nums; }
+.ap-s-post  { font-size: 9px; color: var(--muted); width: 30px; text-align: right; }
+
+/* Reason */
+.ap-reason {
+  font-size: 11px; color: #888; background: #0D0D0D; border-radius: 8px;
+  padding: 8px 10px; line-height: 1.5; border-left: 3px solid #1E1E1E;
+  font-variant-numeric: tabular-nums; margin-bottom: 10px;
+}
+.ap-reason.play  { border-left-color: var(--green); color: #AAA; }
+.ap-reason.noise { border-left-color: var(--red); }
+.ap-reason.wait  { border-left-color: var(--muted); }
+
+/* Footer */
+.ap-footer    { display: flex; align-items: center; justify-content: space-between; }
+.ap-buf-info  { font-size: 9px; color: #555; }
+.ap-reset-btn {
+  font-size: 10px; font-weight: 800; letter-spacing: 1px; color: var(--muted);
+  background: #1A1A1A; border: 1px solid #2A2A2A; padding: 4px 10px;
+  border-radius: 6px; cursor: pointer;
+}
+.ap-reset-btn:active { background: #222; color: var(--text); }
+
+/* ===== VICTORY / TAKE PROFIT OVERLAY ===== */
+.victory-content { text-align: center; }
+.victory-pulse   { animation: victoryPulse 1s ease-in-out infinite; }
+@keyframes victoryPulse {
+  0%,100% { transform: scale(1);    filter: drop-shadow(0 0  8px rgba(255,215,0,0.4)); }
+  50%      { transform: scale(1.15); filter: drop-shadow(0 0 20px rgba(255,215,0,0.9)); }
+}
+.victory-title {
+  background: linear-gradient(90deg, #FFD700, #FFA500, #FFD700);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  font-size: 2.4rem; letter-spacing: 4px; margin: 8px 0 4px;
+}
+.victory-sub    { font-size: 1.1rem; font-weight: 900; letter-spacing: 3px; color: #FFD700; margin-bottom: 16px; }
+.victory-stats  { background: #111; border-radius: 10px; padding: 12px 16px; margin-bottom: 12px; font-size: 14px; line-height: 1.9; }
+.victory-msg    { font-size: 13px; color: #888; line-height: 1.6; margin-bottom: 16px; }
+.victory-actions{ display: flex; flex-direction: column; gap: 8px; }
+.victory-btn    { font-size: 16px; padding: 14px; letter-spacing: 2px; }
+
 /* ===== BORDEAUX CORE ENGINE CARD ===== */
 .bx-card { border-color: #2A1A00; background: linear-gradient(145deg, #0E0E0E, #141410); }
 .elite-badge {
