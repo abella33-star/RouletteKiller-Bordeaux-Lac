@@ -6,6 +6,19 @@ import { processData, computeNumberHeat } from './alpha-engine'
 import { saveState, loadState } from './indexeddb'
 import { haptics } from './haptics'
 
+/** Returns true if the given roulette number is covered by the split list */
+function isNumberCovered(number: number, splits: string[]): boolean {
+  for (const split of splits) {
+    if (split.includes('plein')) {
+      if (parseInt(split) === number) return true
+    } else {
+      const [a, b] = split.split('/').map(Number)
+      if (a === number || b === number) return true
+    }
+  }
+  return false
+}
+
 // ── Default state ──────────────────────────────────────────────
 const DEFAULT: AppState = {
   spins:           [],
@@ -98,10 +111,30 @@ export function useRouletteState() {
     }
   }, [setState])
 
-  // ── Add spin ──────────────────────────────────────────────────
-  const addSpin = useCallback((number: number) => {
+  // ── Add spin + auto-update bankroll + run engine ──────────────
+  const addSpinAndRun = useCallback((number: number) => {
     haptics.tap()
     setState(prev => {
+      // 1. Auto-update bankroll from last recommendation
+      let bankroll       = prev.bankroll
+      let wins           = prev.wins
+      let losses         = prev.losses
+      let consecutiveLoss = prev.consecutiveLoss
+      const last = prev.lastEngineResult
+      if (last && (last.status === 'PLAY' || last.status === 'KILLER')) {
+        const covered = isNumberCovered(number, last.recommendation.splits)
+        if (covered) {
+          bankroll = Math.round((bankroll + last.potential_gain) * 100) / 100
+          wins++
+          consecutiveLoss = 0
+        } else {
+          bankroll = Math.max(0, Math.round((bankroll - last.recommendation.bet_value) * 100) / 100)
+          losses++
+          consecutiveLoss++
+        }
+      }
+
+      // 2. Add spin
       const spin: Spin = {
         id:        `${Date.now()}-${Math.random()}`,
         number,
@@ -109,33 +142,30 @@ export function useRouletteState() {
         zone:      getZone(number),
         timestamp: Date.now(),
       }
-      const spins     = [...prev.spins, spin]
+      const spins      = [...prev.spins, spin]
       const totalSpins = prev.totalSpins + 1
-      const next = { ...prev, spins, totalSpins }
 
-      // Check Take Profit after each spin (not bet-based, but as a side effect of bankroll tracking)
-      if (!prev.victoryShown &&
-          prev.bankroll >= prev.initialDeposit * TAKE_PROFIT_MULTIPLIER &&
+      // 3. Check take profit
+      let victoryShown = prev.victoryShown
+      if (!victoryShown &&
+          bankroll >= prev.initialDeposit * TAKE_PROFIT_MULTIPLIER &&
           prev.initialDeposit > 0) {
         setShowVictory(true)
         haptics.victory()
-        return { ...next, victoryShown: true }
+        victoryShown = true
       }
-      return next
-    })
-  }, [setState])
 
-  // Update engine after spin (reads latest state from ref)
-  const addSpinAndRun = useCallback((number: number) => {
-    addSpin(number)
-    // Use setTimeout 0 to get the updated spins from the next render cycle
+      return { ...prev, spins, totalSpins, bankroll, wins, losses, consecutiveLoss, victoryShown }
+    })
+
+    // 4. Run engine with fresh state (setTimeout 0 to read updated state)
     setTimeout(() => {
       _setState(current => {
         runEngine(current.spins, current.bankroll, current.initialDeposit)
         return current
       })
     }, 0)
-  }, [addSpin, runEngine])
+  }, [setState, runEngine])
 
   // ── Undo last spin ────────────────────────────────────────────
   const undoSpin = useCallback(() => {

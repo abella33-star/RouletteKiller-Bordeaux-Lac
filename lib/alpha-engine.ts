@@ -145,9 +145,8 @@ function numBets(key: SectorKey): number {
 }
 
 function getStrategy(key: SectorKey, confidence: number, bankroll: number, profit: number) {
-  const n      = numBets(key)
-  const splits = formatSplits(key)
-  const hasPlein = SMART_SPLITS[key].pleins.length > 0
+  const allSplits = formatSplits(key)
+  const maxN      = numBets(key)
 
   let phase: 'Sniper' | 'Prudent', totalBet: number
   if (confidence >= SIGNAL_THRESHOLDS.KILLER &&
@@ -160,10 +159,21 @@ function getStrategy(key: SectorKey, confidence: number, bankroll: number, profi
     totalBet  = bankroll * pct
   }
 
-  const bps = Math.round(totalBet / n * 100) / 100
-  totalBet  = Math.round(bps * n * 100) / 100
-  const bestPayout = hasPlein ? 35 : 17
-  const potentialGain = Math.round(bps * (bestPayout - (n-1)) * 100) / 100
+  // Enforce 1€ minimum per position — round to whole euros, trim positions if needed
+  let bps = Math.round(totalBet / maxN)
+  let n: number
+  if (bps < 1) {
+    bps = 1
+    n   = Math.max(1, Math.floor(totalBet))
+  } else {
+    n = maxN
+  }
+  totalBet = bps * n
+
+  const splits        = allSplits.slice(0, n)
+  const hasPleinTaken = splits.some(s => s.includes('plein'))
+  const bestPayout    = hasPleinTaken ? 35 : 17
+  const potentialGain = bps * (bestPayout - (n - 1))
 
   return { phase, totalBet, bps, n, splits, potentialGain }
 }

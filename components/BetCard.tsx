@@ -7,6 +7,11 @@ interface Props {
   profit:   number
 }
 
+/** Whole-euro display for bet amounts (no decimals) */
+function fmtBet(n: number) {
+  return Math.round(n).toLocaleString('fr-FR') + '€'
+}
+/** 2-decimal display for bankroll / profit tracking */
 function fmt(n: number) {
   return n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '€'
 }
@@ -46,9 +51,9 @@ export default function BetCard({ result, bankroll, profit }: Props) {
       {/* Bet numbers — 3 cols */}
       <div className="grid grid-cols-3 gap-1.5">
         {[
-          { val: fmt(r.bet_value),     label: 'MISE TOTALE' },
-          { val: fmt(r.bet_per_split), label: 'PAR POSITION' },
-          { val: result.potential_gain > 0 ? `+${fmt(result.potential_gain)}` : '—', label: 'GAIN POTENTIEL' },
+          { val: fmtBet(r.bet_value),     label: 'MISE TOTALE' },
+          { val: fmtBet(r.bet_per_split), label: 'PAR POSITION' },
+          { val: result.potential_gain > 0 ? `+${fmtBet(result.potential_gain)}` : '—', label: 'GAIN POTENTIEL' },
         ].map(({ val, label }) => (
           <div key={label} className="bg-black rounded-lg text-center" style={{ padding: '4px 2px' }}>
             <div className={`text-sm font-black ${betColor}`}>{val}</div>
@@ -81,7 +86,7 @@ export default function BetCard({ result, bankroll, profit }: Props) {
         <span className={profit >= 0 ? 'text-neon' : 'text-crimson'}>
           Profit: {profit >= 0 ? '+' : ''}{fmt(profit)}
         </span>
-        <span>{r.num_bets} positions · {fmt(r.bet_per_split)}/pos</span>
+        <span>{r.num_bets} positions · {fmtBet(r.bet_per_split)}/pos</span>
       </div>
 
     </div>
