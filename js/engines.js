@@ -278,11 +278,12 @@ class MoneyManagementEngine {
 
 // ===== SESSION ENGINE =====
 const PHASES = {
-  calibration: { icon: '🔍', name: 'CALIBRATION', instr: 'Observez sans miser — collectez les données', color: '#9E9E9E' },
-  hunting: { icon: '🎯', name: 'HUNTING', instr: 'Signal favorable — jouez selon la recommandation', color: '#00E676' },
-  recovery: { icon: '🔄', name: 'RECOVERY', instr: 'Progression Fibonacci — récupérez méthodiquement', color: '#FF9800' },
-  protecting: { icon: '🔒', name: 'PROTECTION', instr: 'Réduisez les mises — protégez vos gains', color: '#FFD700' },
-  exit_zone: { icon: '🚪', name: 'ZONE DE SORTIE', instr: 'QUITTEZ MAINTENANT — sécurisez vos gains !', color: '#E30613' }
+  calibration:    { icon: '🔍', name: 'CALIBRATION',     instr: 'Observez sans miser — collectez les données',                color: '#9E9E9E' },
+  hunting:        { icon: '🎯', name: 'HUNTING',          instr: 'Signal favorable — jouez selon la recommandation',            color: '#00E676' },
+  recovery:       { icon: '🔄', name: 'RECOVERY',         instr: 'Progression Fibonacci — récupérez méthodiquement',            color: '#FF9800' },
+  protecting:     { icon: '🔒', name: 'PROTECTION',       instr: 'Réduisez les mises — protégez vos gains',                    color: '#FFD700' },
+  exit_zone:      { icon: '🚪', name: 'ZONE DE SORTIE',   instr: 'QUITTEZ MAINTENANT — sécurisez vos gains !',                 color: '#E30613' },
+  signal_expired: { icon: '⏱', name: 'SIGNAL EXPIRÉ',   instr: 'Aucun spin depuis 5 min — cycle potentiellement changé',     color: '#FF5722' }
 };
 
 class SessionEngine {

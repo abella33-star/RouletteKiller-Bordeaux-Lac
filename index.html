@@ -13,6 +13,23 @@
 </head>
 <body>
 
+  <!-- SIGNAL EXPIRED OVERLAY -->
+  <div id="signal-expired-overlay" class="overlay hidden">
+    <div class="overlay-content">
+      <div class="big-icon se-pulse">⏱</div>
+      <h2 class="overlay-title" style="color:#FF5722">SIGNAL EXPIRÉ</h2>
+      <div class="se-elapsed" id="se-elapsed">Aucun spin depuis 05:00</div>
+      <p class="se-message">
+        Le cycle de la roulette automatisée peut avoir changé.<br>
+        Les données statistiques accumulées <strong>ne sont plus fiables</strong> pour ce cycle.
+      </p>
+      <div class="se-actions">
+        <button class="se-btn-clear" onclick="resumeWithClear()">🗑 EFFACER &amp; RECOMMENCER</button>
+        <button class="se-btn-keep" onclick="resumeWithHistory()">📊 CONSERVER L'HISTORIQUE</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ANTI-TILT OVERLAY -->
   <div id="antitilt-overlay" class="overlay hidden">
     <div class="overlay-content">
@@ -133,6 +150,16 @@
         <span class="sc-val red" id="stat-cl">0</span>
         <span class="sc-lbl">Pertes cons.</span>
       </div>
+    </div>
+
+    <!-- IDLE WARNING BANNER -->
+    <div id="idle-warning" class="idle-warning hidden">
+      <span class="idle-icon">⏱</span>
+      <div class="idle-text">
+        <span class="idle-title" id="idle-warning-title">Inactivité détectée</span>
+        <span class="idle-sub" id="idle-warning-sub">Dernier spin il y a —</span>
+      </div>
+      <span class="idle-countdown" id="idle-countdown">1:00</span>
     </div>
 
     <!-- EXIT SIGNAL -->

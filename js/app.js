@@ -1,5 +1,10 @@
 'use strict';
 
+// ===== CONSTANTS =====
+const SIGNAL_TIMEOUT   = 300;  // seconds until SIGNAL_EXPIRED (5 min)
+const SIGNAL_WARN_AT   = 240;  // seconds: show warning banner (last 60 s)
+const SIGNAL_WARN_VIBE = 60;   // vibrate at this threshold too
+
 // ===== STATE =====
 let state = {
   spins: [],
@@ -17,7 +22,12 @@ let state = {
   streakSessions: 0,
   antitiltActive: false,
   antitiltTimer: null,
-  antitiltRemaining: 120
+  antitiltRemaining: 120,
+  // --- Signal expiry ---
+  signalExpired: false,
+  lastSpinTimestamp: 0,    // ms epoch; 0 = no spin yet
+  idleSeconds: 0,          // live counter (seconds since last spin)
+  idleTimer: null          // setInterval handle
 };
 
 // Computed
@@ -68,7 +78,9 @@ function save() {
       moneyMode: state.moneyMode,
       selectedProfile: state.selectedProfile,
       x2Mode: state.x2Mode,
-      streakSessions: state.streakSessions
+      streakSessions: state.streakSessions,
+      lastSpinTimestamp: state.lastSpinTimestamp,
+      signalExpired: state.signalExpired
     }));
   } catch (e) {}
 }
@@ -79,7 +91,117 @@ function load() {
     if (!raw) return;
     const saved = JSON.parse(raw);
     Object.assign(state, saved);
+    // Recompute idle seconds from wall clock (handles app reload / background)
+    if (state.lastSpinTimestamp > 0) {
+      state.idleSeconds = Math.floor((Date.now() - state.lastSpinTimestamp) / 1000);
+      if (state.idleSeconds >= SIGNAL_TIMEOUT) {
+        state.signalExpired = true;
+      }
+    }
   } catch (e) {}
+}
+
+// ===== SIGNAL EXPIRY TIMER =====
+function startIdleTimer() {
+  clearInterval(state.idleTimer);
+  // Recompute from timestamp so timer stays accurate after tab switch / reload
+  state.idleSeconds = state.lastSpinTimestamp > 0
+    ? Math.floor((Date.now() - state.lastSpinTimestamp) / 1000)
+    : 0;
+  state.idleTimer = setInterval(() => {
+    if (state.antitiltActive) return;   // pause ticking during anti-tilt lock
+    state.idleSeconds = state.lastSpinTimestamp > 0
+      ? Math.floor((Date.now() - state.lastSpinTimestamp) / 1000)
+      : 0;
+    updateIdleWarning();
+    if (state.idleSeconds >= SIGNAL_TIMEOUT && !state.signalExpired) {
+      expireSignal();
+    }
+  }, 1000);
+}
+
+function resetIdleTimer() {
+  state.lastSpinTimestamp = Date.now();
+  state.idleSeconds = 0;
+  state.signalExpired = false;
+  startIdleTimer();
+  document.getElementById('signal-expired-overlay').classList.add('hidden');
+  updateIdleWarning();
+}
+
+function stopIdleTimer() {
+  clearInterval(state.idleTimer);
+  state.idleTimer = null;
+}
+
+function expireSignal() {
+  state.signalExpired = true;
+  stopIdleTimer();
+  if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 200]);
+  const overlay = document.getElementById('signal-expired-overlay');
+  const elapsed = document.getElementById('se-elapsed');
+  const m = Math.floor(state.idleSeconds / 60).toString().padStart(2, '0');
+  const s = (state.idleSeconds % 60).toString().padStart(2, '0');
+  elapsed.textContent = `Aucun spin depuis ${m}:${s}`;
+  overlay.classList.remove('hidden');
+  document.getElementById('idle-warning').classList.add('hidden');
+  save();
+}
+
+function updateIdleWarning() {
+  const banner = document.getElementById('idle-warning');
+  if (state.signalExpired || state.lastSpinTimestamp === 0 || state.spins.length === 0) {
+    banner.classList.add('hidden');
+    return;
+  }
+  const idle = state.idleSeconds;
+  if (idle < SIGNAL_WARN_AT) {
+    banner.classList.add('hidden');
+    return;
+  }
+  banner.classList.remove('hidden');
+  const remaining = SIGNAL_TIMEOUT - idle;
+  const rm = Math.floor(remaining / 60).toString().padStart(2, '0');
+  const rs = (remaining % 60).toString().padStart(2, '0');
+  const elapsed = idle;
+  const em = Math.floor(elapsed / 60).toString().padStart(2, '0');
+  const es = (elapsed % 60).toString().padStart(2, '0');
+  document.getElementById('idle-warning-title').textContent = 'INACTIVITÉ — SIGNAL MENACÉ';
+  document.getElementById('idle-warning-sub').textContent = `Dernier spin il y a ${em}:${es}`;
+  document.getElementById('idle-countdown').textContent = `${rm}:${rs}`;
+  // One-time haptic when entering the warning zone
+  if (idle === SIGNAL_WARN_AT && navigator.vibrate) navigator.vibrate([100, 50, 100]);
+}
+
+// ===== SIGNAL EXPIRED ACTIONS =====
+function resumeWithClear() {
+  // Hard reset: discard all spins, back to calibration
+  state.spins = [];
+  state.wins = 0;
+  state.losses = 0;
+  state.totalSpins = 0;
+  state.consecutiveLosses = 0;
+  state.consecutiveWins = 0;
+  state.discipline = 100;
+  state.stopShown = false;
+  state.signalExpired = false;
+  state.lastSpinTimestamp = 0;
+  state.idleSeconds = 0;
+  document.getElementById('signal-expired-overlay').classList.add('hidden');
+  stopIdleTimer();
+  save();
+  refresh();
+}
+
+function resumeWithHistory() {
+  // Soft resume: keep history but restart the idle timer
+  state.signalExpired = false;
+  state.lastSpinTimestamp = Date.now();
+  state.idleSeconds = 0;
+  document.getElementById('signal-expired-overlay').classList.add('hidden');
+  startIdleTimer();
+  save();
+  refresh();
 }
 
 // ===== ADVICE MESSAGES =====
@@ -96,13 +218,16 @@ const ADVICE = [
 
 // ===== ADD SPIN =====
 function addSpin(number) {
-  if (state.antitiltActive) return;
+  if (state.antitiltActive || state.signalExpired) return;
 
   const color = getColor(number);
   const zone = getZone(number);
   const spin = { number, color, zone, timestamp: Date.now() };
   state.spins.push(spin);
   state.totalSpins++;
+
+  // Reset the idle/expiry timer on every new spin
+  resetIdleTimer();
 
   // Haptic
   if (navigator.vibrate) navigator.vibrate(30);
@@ -188,7 +313,8 @@ function refresh() {
   const score = scoreEng.calculate(state.spins);
   const chiScore = chi.sessionVarianceScore();
   const decision = selector.decide(state.spins, stats, state.selectedProfile);
-  const phase = sessionEng.phase(stats, score);
+  // Phase: override with signal_expired when applicable
+  const phase = state.signalExpired ? 'signal_expired' : sessionEng.phase(stats, score);
   const phaseInfo = PHASES[phase];
   const exitScore = sessionEng.exitScore(stats, score);
   const lock = lockEng.check(stats);
@@ -542,7 +668,13 @@ function newSession() {
   state.discipline = 100;
   state.startBankroll = state.currentBankroll;
   state.stopShown = false;
+  state.signalExpired = false;
+  state.lastSpinTimestamp = 0;
+  state.idleSeconds = 0;
+  stopIdleTimer();
   document.getElementById('celebration-overlay').classList.add('hidden');
+  document.getElementById('signal-expired-overlay').classList.add('hidden');
+  document.getElementById('idle-warning').classList.add('hidden');
   closeSettings();
   save();
   refresh();
@@ -551,11 +683,15 @@ function newSession() {
 // ===== RESET =====
 function confirmReset() {
   if (confirm('Réinitialiser la session ? La bankroll sera remise à zéro.')) {
+    stopIdleTimer();
     Object.assign(state, {
       spins: [], wins: 0, losses: 0, totalSpins: 0,
       consecutiveLosses: 0, consecutiveWins: 0, discipline: 100,
-      startBankroll: 1000, currentBankroll: 1000, streakSessions: 0, stopShown: false
+      startBankroll: 1000, currentBankroll: 1000, streakSessions: 0, stopShown: false,
+      signalExpired: false, lastSpinTimestamp: 0, idleSeconds: 0
     });
+    document.getElementById('signal-expired-overlay').classList.add('hidden');
+    document.getElementById('idle-warning').classList.add('hidden');
     save();
     refresh();
   }
@@ -603,6 +739,18 @@ function runBacktest() {
 function init() {
   load();
   buildSpinGrid();
+  // Restore idle timer if session was active (spins present and not expired)
+  if (state.lastSpinTimestamp > 0 && !state.signalExpired) {
+    startIdleTimer();
+  }
+  // Show expired overlay immediately if state was already expired on load
+  if (state.signalExpired) {
+    const m = Math.floor(state.idleSeconds / 60).toString().padStart(2, '0');
+    const s = (state.idleSeconds % 60).toString().padStart(2, '0');
+    const elapsed = document.getElementById('se-elapsed');
+    if (elapsed) elapsed.textContent = `Aucun spin depuis ${m}:${s}`;
+    document.getElementById('signal-expired-overlay').classList.remove('hidden');
+  }
   refresh();
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
 }

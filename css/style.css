@@ -303,6 +303,55 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
 .game-val { font-size: 18px; font-weight: 900; }
 .game-lbl { font-size: 10px; color: var(--muted); margin-top: 4px; }
 
+/* ===== SIGNAL EXPIRED OVERLAY ===== */
+@keyframes se-pulse { 0%,100% { transform: scale(1); opacity:1; } 50% { transform: scale(1.15); opacity:0.7; } }
+.se-pulse { animation: se-pulse 1.4s ease-in-out infinite; }
+
+.se-elapsed {
+  font-size: 28px; font-weight: 900; color: #FF5722;
+  margin-bottom: 12px; letter-spacing: 1px;
+}
+.se-message {
+  font-size: 14px; line-height: 1.6; color: #AAA;
+  text-align: center; margin-bottom: 24px;
+}
+.se-message strong { color: #FF5722; }
+.se-actions { display: flex; flex-direction: column; gap: 10px; width: 100%; }
+.se-btn-clear {
+  width: 100%; padding: 16px; border-radius: var(--radius);
+  background: var(--red); color: #fff;
+  font-size: 14px; font-weight: 900; letter-spacing: 1.2px;
+}
+.se-btn-clear:active { opacity: 0.85; }
+.se-btn-keep {
+  width: 100%; padding: 14px; border-radius: var(--radius);
+  background: transparent; color: var(--muted);
+  font-size: 13px; font-weight: 700; letter-spacing: 1px;
+  border: 1px solid #333;
+}
+.se-btn-keep:active { background: #1A1A1A; }
+
+/* ===== IDLE WARNING BANNER ===== */
+@keyframes idle-pulse-bg {
+  0%,100% { background: #3D1A00; }
+  50% { background: #5A2700; }
+}
+.idle-warning {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 16px;
+  background: #3D1A00; border-bottom: 1px solid #FF5722;
+  animation: idle-pulse-bg 1.5s ease-in-out infinite;
+}
+.idle-warning.hidden { display: none; }
+.idle-icon { font-size: 20px; flex-shrink: 0; }
+.idle-text { flex: 1; display: flex; flex-direction: column; gap: 1px; }
+.idle-title { font-size: 12px; font-weight: 800; color: #FF5722; letter-spacing: 1px; }
+.idle-sub { font-size: 11px; color: #AA7755; }
+.idle-countdown {
+  font-size: 20px; font-weight: 900; color: #FF5722;
+  font-variant-numeric: tabular-nums; min-width: 44px; text-align: right;
+}
+
 /* ===== RESPONSIVE ===== */
 @media (max-width: 375px) {
   .gauge-score { font-size: 52px; }
