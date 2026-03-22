@@ -137,14 +137,24 @@ function analyzeOffset(spins, lookback = 10) {
   const recent = valid.slice(-lookback);
   if (recent.length < 3) return NONE;
 
-  const offsets = recent.map(s => (WHEEL_POS[s.number] - WHEEL_POS[s.starting_point] + 37) % 37);
+  // Bidirectional: cylinder rotates CW, ball CCW — take minimum physical distance
+  const DAMPING = 1;          // ±1 pocket glissement on Alfastreet carpet
+  const CLUSTER_TOL = 2 + DAMPING;  // = 3 positions tolerance
 
-  // Scan for best cluster center with ±2 tolerance (circular wrap)
+  const offsets = recent.map(s => {
+    const sp = WHEEL_POS[s.starting_point];
+    const rp = WHEEL_POS[s.number];
+    const cw  = (rp - sp + 37) % 37;
+    const ccw = (sp - rp + 37) % 37;
+    return Math.min(cw, ccw);
+  });
+
+  // Scan for best cluster center with ±CLUSTER_TOL tolerance (circular wrap)
   let best = { center: -1, count: 0 };
   for (let c = 0; c < 37; c++) {
     const cnt = offsets.filter(o => {
       const d = Math.abs(o - c);
-      return Math.min(d, 37 - d) <= 2;
+      return Math.min(d, 37 - d) <= CLUSTER_TOL;
     }).length;
     if (cnt > best.count) best = { center: c, count: cnt };
   }

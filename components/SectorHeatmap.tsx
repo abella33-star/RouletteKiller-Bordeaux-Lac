@@ -7,7 +7,7 @@
  *  2. Sector arc labels (Voisins / Tiers / Orphelins)
  *  3. Pulsing glow ring on the dominant sector
  */
-import { useMemo } from 'react'
+import { useMemo, useRef, useEffect } from 'react'
 import { WHEEL_ORDER, CYLINDER, SECTOR_COLORS, SECTOR_LABELS } from '@/lib/constants'
 import type { SectorKey, EngineResult } from '@/lib/types'
 
@@ -80,6 +80,42 @@ interface Props {
 }
 
 export default function SectorHeatmap({ heat, engineResult, lastNumber }: Props) {
+  const glowRef = useRef<SVGCircleElement>(null)
+  const rafRef  = useRef<number>(0)
+
+  // rAF-driven glow ring — 120Hz ProMotion aware
+  useEffect(() => {
+    const el = glowRef.current
+    if (!el) return
+
+    const status = engineResult?.status
+    if (status !== 'PLAY' && status !== 'KILLER') {
+      el.style.opacity = '0'
+      return
+    }
+
+    const speed  = status === 'KILLER' ? 0.007 : 0.003  // rad/ms
+    const minO   = 0.3
+    const maxO   = status === 'KILLER' ? 1.0 : 0.7
+    const blur   = status === 'KILLER' ? 12 : 6
+    const color  = el.getAttribute('data-color') ?? '#00E676'
+    let start = 0
+
+    function tick(ts: number) {
+      if (!start) start = ts
+      const t = (ts - start) * speed
+      const osc = (Math.sin(t) + 1) / 2                   // 0..1
+      const o   = minO + osc * (maxO - minO)
+      const b   = blur * osc
+      el!.style.opacity = o.toFixed(3)
+      el!.style.filter  = `drop-shadow(0 0 ${b.toFixed(1)}px ${color})`
+      rafRef.current = requestAnimationFrame(tick)
+    }
+
+    rafRef.current = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(rafRef.current)
+  }, [engineResult?.status, engineResult?.recommendation?.target])
+
   // Determine dominant sector from engine result
   const dominantKey: SectorKey | null = useMemo(() => {
     if (!engineResult?.sectors) return null
@@ -126,26 +162,18 @@ export default function SectorHeatmap({ heat, engineResult, lastNumber }: Props)
       {/* ── Background circle ── */}
       <circle cx={CX} cy={CY} r={R_SECTOR + 2} fill="#0A0A0A" />
 
-      {/* ── Pulsing glow ring for dominant sector ── */}
-      {dominantKey && (() => {
-        const color = SECTOR_COLORS[dominantKey]
-        const status = engineResult?.status
-        return (
-          <circle
-            cx={CX} cy={CY} r={R_GLOW}
-            fill="none"
-            stroke={color}
-            strokeWidth={status === 'KILLER' ? 3 : 1.5}
-            opacity={0.7}
-            style={{
-              filter: `drop-shadow(0 0 ${status==='KILLER'?'12px':'6px'} ${color})`,
-              animation: status === 'KILLER'
-                ? 'glowGold 0.7s ease-in-out infinite'
-                : 'glowGreen 2s ease-in-out infinite',
-            }}
-          />
-        )
-      })()}
+      {/* ── Pulsing glow ring for dominant sector (rAF / 120Hz) ── */}
+      {dominantKey && (
+        <circle
+          ref={glowRef}
+          data-color={SECTOR_COLORS[dominantKey]}
+          cx={CX} cy={CY} r={R_GLOW}
+          fill="none"
+          stroke={SECTOR_COLORS[dominantKey]}
+          strokeWidth={engineResult?.status === 'KILLER' ? 3 : 1.5}
+          style={{ willChange: 'opacity, filter' }}
+        />
+      )}
 
       {/* ── Sector arc bands (outer band) ── */}
       {sectorArcs.map(({ key, segments, color }) =>

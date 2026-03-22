@@ -8,16 +8,16 @@ const vibe = (pattern: number | number[]) => {
 
 export const haptics = {
   /** Short tap — number registered */
-  tap:      () => vibe(15),
+  tap:      () => vibe(40),
 
   /** Double pulse — PLAY signal detected */
-  play:     () => vibe([40, 20, 40]),
+  play:     () => vibe([100, 50, 100]),
 
   /** Triple heavy pulse — KILLER signal */
-  killer:   () => vibe([80, 30, 80, 30, 200]),
+  killer:   () => vibe([200, 50, 200, 50, 300]),
 
   /** Warning buzz — NOISE / reset */
-  noise:    () => vibe([200, 100, 200]),
+  noise:    () => vibe(500),
 
   /** Victory rumble — Take Profit reached */
   victory:  () => vibe([100, 50, 100, 50, 200, 100, 500]),

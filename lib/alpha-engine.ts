@@ -101,13 +101,21 @@ function analyzeOffset(spins: Spin[]): OffsetAnalysis {
   const recent = valid.slice(-10)
   if (recent.length < 3) return NONE
 
-  const offsets = recent.map(s =>
-    (WHEEL_POS[s.number] - WHEEL_POS[s.starting_point!] + 37) % 37
-  )
+  // Bidirectional: cylinder rotates CW, ball CCW — take minimum physical distance
+  const DAMPING = 1          // ±1 pocket glissement on Alfastreet carpet
+  const CLUSTER_TOL = 2 + DAMPING  // = 3 positions tolerance
+
+  const offsets = recent.map(s => {
+    const sp = WHEEL_POS[s.starting_point!]
+    const rp = WHEEL_POS[s.number]
+    const cw  = (rp - sp + 37) % 37
+    const ccw = (sp - rp + 37) % 37
+    return Math.min(cw, ccw)
+  })
 
   let best = { center: -1, count: 0 }
   for (let c = 0; c < 37; c++) {
-    const cnt = offsets.filter(o => Math.min(Math.abs(o-c), 37-Math.abs(o-c)) <= 2).length
+    const cnt = offsets.filter(o => Math.min(Math.abs(o-c), 37-Math.abs(o-c)) <= CLUSTER_TOL).length
     if (cnt > best.count) best = { center: c, count: cnt }
   }
 
