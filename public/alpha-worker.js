@@ -75,7 +75,7 @@ function bayesianPosterior(win, nums, m = 4) {
 
 /** Composite confidence score [0–100] for a sector */
 function sectorConfidence(win, nums) {
-  if (win.length < 10) return 0;
+  if (win.length < 1) return 0;
   const Z    = zScore(win, nums);
   const p0   = nums.length / 37;
   const post = bayesianPosterior(win, nums);
@@ -90,7 +90,7 @@ function sectorConfidence(win, nums) {
 
 function colorChiSquare(win) {
   const n = win.length;
-  if (n < 10) return { chi2: 0, pValue: 1, isNoise: true };
+  if (n < 3) return { chi2: 0, pValue: 0.5, isNoise: false };
   const r = win.filter(s => RED_NUMBERS.includes(s.number)).length;
   const v = win.filter(s => s.number === 0).length;
   const b = n - r - v;
@@ -102,11 +102,11 @@ function colorChiSquare(win) {
 
 function parityChiSquare(win) {
   const n    = win.length;
-  if (n < 10) return { chi2: 0, pValue: 1, isNoise: true };
+  if (n < 3) return { chi2: 0, pValue: 0.5, isNoise: false };
   const even = win.filter(s => s.number > 0 && EVEN_NUMBERS.includes(s.number)).length;
   const odd  = win.filter(s => s.number > 0 && !EVEN_NUMBERS.includes(s.number)).length;
   const nz   = even + odd;
-  if (nz < 5) return { chi2: 0, pValue: 1, isNoise: true };
+  if (nz < 2) return { chi2: 0, pValue: 0.5, isNoise: false };
   const Ep   = nz / 2;
   const chi2 = (even - Ep) ** 2 / Ep + (odd - Ep) ** 2 / Ep;
   const pValue = chiSqPValue(chi2, 1);
@@ -194,26 +194,34 @@ function numBets(sectorKey) {
  *  Phase 2 (Aggressive) — profit ≥ 50€ & score > 85% : 50 % profit / numBets
  */
 function getExecutionStrategy(bankroll, profit, signalScore, bestSector) {
-  const n   = numBets(bestSector);
-  const splits = formatSplits(bestSector);
-  const hasSplit = SMART_SPLITS[bestSector].splits.length > 0;
-  const hasPlein = SMART_SPLITS[bestSector].pleins.length > 0;
-  const bestPayout = hasPlein ? 35 : 17;   // plein > ceval
+  const allSplits = formatSplits(bestSector);
+  const maxN      = numBets(bestSector);
 
-  let phase, totalBet, betPerSplit;
+  let phase, totalBet;
   if (profit >= 50 && signalScore > 85) {
-    phase       = 'Aggressive';
-    totalBet    = profit * 0.50;
+    phase    = 'Sniper';
+    totalBet = profit * 0.50;
   } else {
-    phase       = 'Safe';
-    const pct   = signalScore >= 85 ? 0.02 : 0.01;
-    totalBet    = bankroll * pct;
+    phase    = 'Prudent';
+    const pct = signalScore >= 85 ? 0.02 : 0.01;
+    totalBet  = bankroll * pct;
   }
-  betPerSplit = Math.round(totalBet / n * 100) / 100;
-  totalBet    = Math.round(betPerSplit * n * 100) / 100;
 
-  // Best-case net gain: one bet hits, rest lost
-  const potentialGain = Math.round(betPerSplit * (bestPayout - (n - 1)) * 100) / 100;
+  // Enforce 1€ minimum per position — round to whole euros, trim if needed
+  let betPerSplit = Math.round(totalBet / maxN);
+  let n;
+  if (betPerSplit < 1) {
+    betPerSplit = 1;
+    n = Math.max(1, Math.floor(totalBet));
+  } else {
+    n = maxN;
+  }
+  totalBet = betPerSplit * n;
+
+  const splits        = allSplits.slice(0, n);
+  const hasPleinTaken = splits.some(s => s.includes('plein'));
+  const bestPayout    = hasPleinTaken ? 35 : 17;
+  const potentialGain = betPerSplit * (bestPayout - (n - 1));
 
   return { phase, totalBet, betPerSplit, numBets: n, splits, potentialGain };
 }
@@ -227,16 +235,16 @@ function processData(history, bankroll, initialDeposit, profit) {
 
   // Circuit Breaker: signal flagged externally (passed as isExpired flag)
   // ── Insufficient data ─────────────────────────────────────────
-  if (history.length < 10) {
+  if (history.length < 1) {
     return _out('WAIT', 0,
       { target: '—', type: 'Calibration', splits: [], bet_per_split: 0, bet_value: 0, num_bets: 0 },
-      `Calibration — ${history.length}/10 spins requis`, 0, '—',
+      'En attente du premier numéro', 0, '—',
       null, null, null, performance.now() - t0
     );
   }
 
-  // Analysis window: last 18-24 spins
-  const win = history.slice(-Math.min(24, Math.max(18, history.length)));
+  // Analysis window: use all available spins, max 24
+  const win = history.slice(-Math.min(24, history.length));
 
   // ── 1. Chi-Square: colour + parity ─────────────────────────
   const cTest = colorChiSquare(win);

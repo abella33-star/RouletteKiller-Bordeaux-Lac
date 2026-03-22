@@ -133,11 +133,10 @@ export default function Home() {
       <main
         className="flex flex-col bg-black overflow-hidden"
         style={{
-          height:        '100dvh',
-          paddingTop:    'var(--sat)',
-          paddingBottom: 'var(--sab)',
-          paddingLeft:   'var(--sal)',
-          paddingRight:  'var(--sar)',
+          height:      '100dvh',
+          paddingTop:  'var(--sat)',
+          paddingLeft: 'var(--sal)',
+          paddingRight:'var(--sar)',
         }}
       >
 
@@ -178,7 +177,12 @@ export default function Home() {
         {/* ══ ZONE 3 : GRILLE 0-36 ONE-TAP + CONTRÔLES (bas, fixe) ══ */}
         <div
           className="flex-shrink-0 border-t border-border"
-          style={{ padding: '6px 8px 8px' }}
+          style={{
+            paddingTop:    6,
+            paddingLeft:   8,
+            paddingRight:  8,
+            paddingBottom: 'max(16px, var(--sab))',
+          }}
         >
           <NumberPad
             onSpin={addSpin}

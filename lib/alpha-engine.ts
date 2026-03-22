@@ -47,7 +47,7 @@ function bayesianPosterior(win: Spin[], nums: number[], m = 4): number {
 }
 
 function sectorConfidence(win: Spin[], nums: number[]): number {
-  if (win.length < 10) return 0
+  if (win.length < 1) return 0
   const Z    = zScore(win, nums)
   const p0   = nums.length / 37
   const post = bayesianPosterior(win, nums)
@@ -60,7 +60,7 @@ function sectorConfidence(win: Spin[], nums: number[]): number {
 
 function colorChiSquare(win: Spin[]) {
   const n = win.length
-  if (n < 10) return { chi2: 0, pValue: 1, isNoise: true }
+  if (n < 3) return { chi2: 0, pValue: 0.5, isNoise: false }
   const r  = win.filter(s => RED_NUMBERS.has(s.number)).length
   const v  = win.filter(s => s.number === 0).length
   const b  = n - r - v
@@ -72,7 +72,7 @@ function colorChiSquare(win: Spin[]) {
 
 function parityChiSquare(win: Spin[]) {
   const n    = win.length
-  if (n < 10) return { chi2: 0, pValue: 1, isNoise: true }
+  if (n < 3) return { chi2: 0, pValue: 0.5, isNoise: false }
   const even = win.filter(s => s.number > 0 && EVEN_NUMBERS.has(s.number)).length
   const odd  = win.filter(s => s.number > 0 && !EVEN_NUMBERS.has(s.number)).length
   const nz   = even + odd
@@ -188,16 +188,16 @@ export function processData(
   const t0   = performance.now()
   const profit = bankroll - initialDeposit
 
-  // Insufficient data
-  if (spins.length < 10) {
+  // Need at least 1 spin to analyze
+  if (spins.length < 1) {
     return _out('WAIT', 0,
       { target:'—', type:'Calibration', splits:[], bet_per_split:0, bet_value:0, num_bets:0 },
-      `Calibration — ${spins.length}/10 spins requis`, 0, '—',
+      'En attente du premier numéro', 0, '—',
       null, null, null, null, performance.now()-t0)
   }
 
-  // Analysis window 18-24
-  const win = spins.slice(-Math.min(24, Math.max(18, spins.length)))
+  // Analysis window: use all available spins, max 24
+  const win = spins.slice(-Math.min(24, spins.length))
 
   // 1. Chi-Square filters
   const cTest = colorChiSquare(win)
@@ -296,7 +296,7 @@ export function computeNumberHeat(spins: Spin[]): Record<number, number> {
   win.forEach(s => { counts[s.number] = (counts[s.number] || 0) + 1 })
 
   const n = win.length
-  if (n < 5) return counts
+  if (n < 1) return counts
 
   const p = 1 / 37
   const E = n * p
