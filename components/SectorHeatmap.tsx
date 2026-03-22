@@ -54,14 +54,14 @@ function midAngle(i: number): number {
   return i * STEP - Math.PI / 2
 }
 
-/** Heat colour: blue (cold) → black (neutral) → orange → red (hot) */
+/** Heat colour: dark navy (cold) → black (neutral) → purple → vivid red (hot) */
 function heatColor(z: number): string {
   const clamped = Math.max(-3, Math.min(3, z))
-  if (clamped < -0.5) return '#1A2A4A'          // cold blue
-  if (clamped < 0.5)  return '#1C1C1C'          // neutral
-  if (clamped < 1.5)  return '#5C3000'          // warm orange-dark
-  if (clamped < 2.5)  return '#FF9800'          // hot orange
-  return '#FF3D00'                              // very hot red
+  if (clamped < -0.5) return '#0D1B2A'          // cold — dark navy
+  if (clamped < 0.5)  return '#1C1C1C'          // neutral — near black
+  if (clamped < 1.5)  return '#4A0080'          // warm — deep purple
+  if (clamped < 2.5)  return '#C62828'          // hot — vivid red
+  return '#FF0000'                              // very hot — pure neon red
 }
 
 /** Which sector arc indices belong to a sector key */
@@ -230,8 +230,9 @@ export default function SectorHeatmap({ heat, engineResult, lastNumber }: Props)
               strokeWidth={isLast ? 1.5 : 0.5}
               className="heatmap-wedge"
               style={{
-                filter: isLast ? 'drop-shadow(0 0 6px rgba(0,230,118,0.8))' :
-                        z > 2 ? 'drop-shadow(0 0 4px rgba(255,152,0,0.6))' : undefined,
+                filter: isLast   ? 'drop-shadow(0 0 8px rgba(0,230,118,1.0))' :
+                        z > 2    ? 'drop-shadow(0 0 6px rgba(255,0,0,0.9))' :
+                        z > 1    ? 'drop-shadow(0 0 4px rgba(140,0,200,0.7))' : undefined,
               }}
             />
             <text

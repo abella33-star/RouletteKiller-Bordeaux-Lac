@@ -130,15 +130,10 @@ export default function Home() {
         />
       )}
 
-      {/*
-        Layout — 3 zones fixes :
-          ZONE 1 (haut, fixe)     : Radar heatmap
-          ZONE 2 (milieu, scroll) : Bankroll + Signal table + Smart Splits
-          ZONE 3 (bas, fixe)      : Grille 0-36 one-tap + contrôles
-      */}
       <main
-        className="h-screen flex flex-col bg-black overflow-hidden"
+        className="flex flex-col bg-black overflow-hidden"
         style={{
+          height:        '100dvh',
           paddingTop:    'var(--sat)',
           paddingBottom: 'var(--sab)',
           paddingLeft:   'var(--sal)',
@@ -146,10 +141,10 @@ export default function Home() {
         }}
       >
 
-        {/* ══ ZONE 1 : RADAR HEATMAP (haut, 32dvh) ══ */}
+        {/* ══ ZONE 1 : RADAR — 26dvh fixe ══ */}
         <div
           className="flex-shrink-0 flex items-center justify-center bg-black"
-          style={{ height: '32dvh' }}
+          style={{ height: '26dvh' }}
         >
           <div style={{ height: '100%', aspectRatio: '1 / 1' }}>
             <SectorHeatmap
@@ -160,8 +155,8 @@ export default function Home() {
           </div>
         </div>
 
-        {/* ══ ZONE 2 : SIGNAL TABLE + SMART SPLITS (milieu, scrollable) ══ */}
-        <div className="flex-1 min-h-0 overflow-y-auto scroll-zone px-3 py-1.5 flex flex-col gap-2">
+        {/* ══ ZONE 2 : COCKPIT — flex-1, ZERO SCROLL ══ */}
+        <div className="flex-1 min-h-0 overflow-hidden px-2 py-1 flex flex-col gap-1.5">
 
           {/* Bankroll header (tap pour changer la bankroll) */}
           <BankrollHeader

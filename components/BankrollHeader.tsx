@@ -1,9 +1,9 @@
 'use client'
 interface Props {
-  bankroll:      number
+  bankroll:       number
   initialDeposit: number
-  wins:          number
-  losses:        number
+  wins:           number
+  losses:         number
   onOpenSettings: () => void
 }
 
@@ -12,47 +12,45 @@ function fmt(n: number) {
 }
 
 export default function BankrollHeader({
-  bankroll, initialDeposit, wins, losses, onOpenSettings
+  bankroll, initialDeposit, wins, losses, onOpenSettings,
 }: Props) {
-  const profit    = bankroll - initialDeposit
-  const profitPct = initialDeposit > 0
-    ? ((bankroll - initialDeposit) / initialDeposit * 100)
-    : 0
-  const isUp = profit >= 0
+  const profit  = bankroll - initialDeposit
+  const pct     = initialDeposit > 0 ? (profit / initialDeposit * 100) : 0
+  const isUp    = profit >= 0
+  const profitColor = isUp ? '#00E676' : '#FF1744'
 
   return (
-    <div className="flex items-center justify-between px-1">
+    <div
+      className="flex items-center justify-between px-1"
+      style={{ height: 36, flexShrink: 0 }}
+    >
       {/* Bankroll */}
-      <div>
-        <div className="text-[9px] text-muted tracking-widest font-black">BANKROLL</div>
-        <div className="text-xl font-black text-gold tabular-nums leading-tight">
-          {fmt(bankroll)}
-        </div>
+      <div className="flex items-baseline gap-1.5">
+        <span className="text-[8px] text-muted tracking-widest font-black">BK</span>
+        <span className="text-base font-black text-gold tabular-nums leading-none">{fmt(bankroll)}</span>
       </div>
 
-      {/* Profit */}
-      <div className="text-center">
-        <div className="text-[9px] text-muted tracking-widest font-black">SESSION</div>
-        <div className={`text-lg font-black tabular-nums leading-tight ${isUp ? 'text-neon' : 'text-crimson'}`}>
+      {/* Session profit */}
+      <div className="flex items-baseline gap-1" style={{ color: profitColor }}>
+        <span className="text-sm font-black tabular-nums leading-none">
           {profit >= 0 ? '+' : ''}{fmt(profit)}
-        </div>
-        <div className={`text-[10px] font-black ${isUp ? 'text-neon/70' : 'text-crimson/70'}`}>
-          {profitPct >= 0 ? '+' : ''}{profitPct.toFixed(1)}%
-        </div>
+        </span>
+        <span className="text-[9px] font-black">
+          ({pct >= 0 ? '+' : ''}{pct.toFixed(1)}%)
+        </span>
       </div>
 
       {/* W/L + settings */}
-      <div className="flex flex-col items-end gap-1">
+      <div className="flex items-center gap-2">
+        <span className="text-[9px] text-muted tabular-nums">{wins}V/{losses}D</span>
         <button
           onClick={onOpenSettings}
-          className="text-lg bg-card border border-border rounded-xl px-3 py-1.5 active:bg-border"
+          className="bg-card border border-border rounded-lg active:bg-border"
+          style={{ padding: '4px 8px', fontSize: 14, touchAction: 'manipulation' }}
           aria-label="Paramètres bankroll"
         >
           💰
         </button>
-        <div className="text-[9px] text-muted tabular-nums">
-          {wins}V / {losses}D
-        </div>
       </div>
     </div>
   )
