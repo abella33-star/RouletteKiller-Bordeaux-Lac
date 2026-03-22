@@ -2,13 +2,13 @@ import type { Metadata, Viewport } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'RouletteKiller — Bordeaux Lac',
-  description: 'Moteur décisionnel ELITE — Bordeaux Alpha-Predator Engine',
+  title: 'System Monitor',
+  description: 'Live analytics dashboard',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'RouletteKiller',
+    title: 'Monitor',
   },
   other: {
     'mobile-web-app-capable': 'yes',

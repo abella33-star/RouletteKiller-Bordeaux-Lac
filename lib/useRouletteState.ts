@@ -9,9 +9,9 @@ import { haptics } from './haptics'
 // ── Default state ──────────────────────────────────────────────
 const DEFAULT: AppState = {
   spins:           [],
-  bankroll:        1000,
-  initialDeposit:  1000,
-  startBankroll:   1000,
+  bankroll:        100,
+  initialDeposit:  100,
+  startBankroll:   100,
   wins:            0,
   losses:          0,
   totalSpins:      0,
