@@ -125,7 +125,9 @@ export function useRouletteState() {
       if (last && (last.status === 'PLAY' || last.status === 'KILLER')) {
         const covered = isNumberCovered(number, last.recommendation.splits)
         if (covered) {
-          bankroll = Math.round((bankroll + last.potential_gain) * 100) / 100
+          // Win: mise_sur_numéro × 35 - mise_totale
+          const gain = last.recommendation.bet_per_split * 35 - last.recommendation.bet_value
+          bankroll = Math.round((bankroll + gain) * 100) / 100
           wins++
           consecutiveLoss = 0
         } else {

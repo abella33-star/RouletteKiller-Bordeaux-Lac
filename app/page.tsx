@@ -170,7 +170,7 @@ export default function Home() {
         {/* ══ ZONE 3 : GRILLE + CONTRÔLES — prend tout l'espace restant ══ */}
         <div
           className="flex-1 min-h-0 flex flex-col border-t border-border"
-          style={{ paddingTop: 6, paddingLeft: 8, paddingRight: 8, paddingBottom: 'max(60px, var(--sab))' }}
+          style={{ paddingTop: 6, paddingLeft: 8, paddingRight: 8, paddingBottom: 'max(64px, var(--sab))' }}
         >
           {/* Grille prend tout l'espace disponible */}
           <div className="flex-1 min-h-0">

@@ -76,12 +76,11 @@ function bayesianPosterior(win, nums, m = 4) {
 /** Composite confidence score [0–100] for a sector */
 function sectorConfidence(win, nums) {
   if (win.length < 1) return 0;
-  const Z    = zScore(win, nums);
-  const p0   = nums.length / 37;
-  const post = bayesianPosterior(win, nums);
-  const zC   = normalCDF(Z) * 100;
-  const bC   = Math.min(100, Math.max(0, (post - p0) / p0) * 120);
-  return Math.min(100, zC * 0.60 + bC * 0.40);
+  const N = win.length;
+  const Z = zScore(win, nums);
+  if (Z <= 0) return 0;
+  // Dampened by sample size: needs N≥10 + strong Z to reach PLAY threshold
+  return Math.min(100, Math.max(0, (N / 30) * (Z / 2) * 100));
 }
 
 // ───────────────────────────────────────────────────────────────
@@ -219,9 +218,8 @@ function getExecutionStrategy(bankroll, profit, signalScore, bestSector) {
   totalBet = betPerSplit * n;
 
   const splits        = allSplits.slice(0, n);
-  const hasPleinTaken = splits.some(s => s.includes('plein'));
-  const bestPayout    = hasPleinTaken ? 35 : 17;
-  const potentialGain = betPerSplit * (bestPayout - (n - 1));
+  // Always use 35x payout (consistent with bankroll win formula)
+  const potentialGain = betPerSplit * 35 - totalBet;
 
   return { phase, totalBet, betPerSplit, numBets: n, splits, potentialGain };
 }

@@ -48,12 +48,11 @@ function bayesianPosterior(win: Spin[], nums: number[], m = 4): number {
 
 function sectorConfidence(win: Spin[], nums: number[]): number {
   if (win.length < 1) return 0
-  const Z    = zScore(win, nums)
-  const p0   = nums.length / 37
-  const post = bayesianPosterior(win, nums)
-  const zC   = normalCDF(Z) * 100
-  const bC   = Math.min(100, Math.max(0, (post - p0) / p0) * 120)
-  return Math.min(100, zC * 0.60 + bC * 0.40)
+  const N = win.length
+  const Z = zScore(win, nums)
+  if (Z <= 0) return 0
+  // Dampened by sample size: needs N≥10 + strong Z to reach PLAY threshold
+  return Math.min(100, Math.max(0, (N / 30) * (Z / 2) * 100))
 }
 
 // ── Chi-Square noise filters ──────────────────────────────────
@@ -171,9 +170,8 @@ function getStrategy(key: SectorKey, confidence: number, bankroll: number, profi
   totalBet = bps * n
 
   const splits        = allSplits.slice(0, n)
-  const hasPleinTaken = splits.some(s => s.includes('plein'))
-  const bestPayout    = hasPleinTaken ? 35 : 17
-  const potentialGain = bps * (bestPayout - (n - 1))
+  // Always use 35x payout (consistent with bankroll win formula)
+  const potentialGain = bps * 35 - totalBet
 
   return { phase, totalBet, bps, n, splits, potentialGain }
 }
