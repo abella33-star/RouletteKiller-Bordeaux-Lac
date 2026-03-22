@@ -79,11 +79,10 @@ function bayesianPosterior(win, nums, m = 4) {
 /** Composite confidence score [0–100] for a sector */
 function sectorConfidence(win, nums) {
   if (win.length < 1) return 0;
-  const N = win.length;
   const Z = zScore(win, nums);
   if (Z <= 0) return 0;
-  // Dampened by sample size: needs N≥10 + strong Z to reach PLAY threshold
-  return Math.min(100, Math.max(0, (N / 30) * (Z / 2) * 100));
+  // Ultra-sensitivity: pas de dampening — réagit dès Z≥0.1
+  return Math.min(100, Math.max(0, Z * 40));
 }
 
 // ───────────────────────────────────────────────────────────────
@@ -267,8 +266,8 @@ function processData(history, bankroll, initialDeposit, profit) {
   let confidence = best.confidence;
   if (offset.detected) confidence = Math.min(100, confidence * 1.30);
 
-  // ── 5. Noise gate — bypassed when Z > 2.5 (sector anomaly takes priority)
-  if (noiseGlobal && confidence < 75 && best.Z <= 2.5) {
+  // ── 5. Noise gate — désactivé, toujours afficher le secteur dominant
+  if (noiseGlobal && confidence < 0 && best.Z <= 2.5) {
     return _out('NOISE', confidence,
       { target: 'NOISE', type: '—', splits: [], bet_per_split: 0, bet_value: 0, num_bets: 0 },
       `Distributions aléatoires — χ²-col p=${cTest.pValue.toFixed(3)}, χ²-par p=${pTest.pValue.toFixed(3)}`,
@@ -276,15 +275,21 @@ function processData(history, bankroll, initialDeposit, profit) {
     );
   }
 
-  // ── 5b. Early anomaly: N≥3 + Z>2.5 → force PLAY (répétition dès 3 tirages)
+  // ── 5b. Early anomaly: Z>0.1 → force PLAY (moindre avance suffit)
   let status;
   if (confidence >= 90) status = 'KILLER';
-  else if (confidence >= 70) status = 'PLAY';
+  else if (confidence >= 5) status = 'PLAY';
   else status = 'WAIT';
 
-  if (win.length >= 3 && best.Z > 2.5 && status === 'WAIT') {
+  if (best.Z > 0.1 && status === 'WAIT') {
     status = 'PLAY';
-    confidence = Math.max(confidence, 35);
+    confidence = Math.max(confidence, 10);
+  }
+
+  // Force PLAY dès 2 numéros — jamais de Smart Splits vide
+  if (win.length >= 2 && status === 'WAIT') {
+    status = 'PLAY';
+    confidence = Math.max(confidence, 5);
   }
 
   if (status === 'WAIT') {

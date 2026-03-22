@@ -61,8 +61,8 @@ export function getZone(n: number): SectorKey | null {
 // ── Signal thresholds ────────────────────────────────────────
 export const SIGNAL_THRESHOLDS = {
   KILLER: 90,   // ≥90% → KILLER mode
-  PLAY:   70,   // ≥70% → PLAY
-  NOISE_GATE: 75, // below this with double noise → NOISE
+  PLAY:    5,   // ≥5% → PLAY (ultra-sensitivity: réagit dès Z≥0.1)
+  NOISE_GATE: 0, // désactivé — toujours afficher le secteur dominant
 } as const
 
 // ── Bet rules ────────────────────────────────────────────────

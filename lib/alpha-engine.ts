@@ -48,11 +48,10 @@ function bayesianPosterior(win: Spin[], nums: number[], m = 4): number {
 
 function sectorConfidence(win: Spin[], nums: number[]): number {
   if (win.length < 1) return 0
-  const N = win.length
   const Z = zScore(win, nums)
   if (Z <= 0) return 0
-  // Dampened by sample size: needs N≥10 + strong Z to reach PLAY threshold
-  return Math.min(100, Math.max(0, (N / 30) * (Z / 2) * 100))
+  // Ultra-sensitivity: pas de dampening — réagit dès Z≥0.1
+  return Math.min(100, Math.max(0, Z * 40))
 }
 
 // ── Chi-Square noise filters ──────────────────────────────────
@@ -236,10 +235,16 @@ export function processData(
     status = 'WAIT'
   }
 
-  // Early anomaly override: N≥3 + Z>2.5 → force PLAY (répétition visible dès 3 tirages)
-  if (win.length >= 3 && best.Z > 2.5 && status === 'WAIT') {
+  // Early anomaly override: Z>0.1 → force PLAY (moindre avance suffit)
+  if (best.Z > 0.1 && status === 'WAIT') {
     status = 'PLAY'
-    confidence = Math.max(confidence, 35)
+    confidence = Math.max(confidence, 10)
+  }
+
+  // Force PLAY dès 2 numéros — jamais de Smart Splits vide
+  if (win.length >= 2 && status === 'WAIT') {
+    status = 'PLAY'
+    confidence = Math.max(confidence, 5)
   }
 
   if (status === 'WAIT') {
