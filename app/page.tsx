@@ -154,10 +154,8 @@ export default function Home() {
           </div>
         </div>
 
-        {/* ══ ZONE 2 : COCKPIT — flex-1, ZERO SCROLL ══ */}
-        <div className="flex-1 min-h-0 overflow-hidden px-2 py-1 flex flex-col gap-1.5">
-
-          {/* Bankroll header (tap pour changer la bankroll) */}
+        {/* ══ ZONE 2 : COCKPIT — compact, ne prend que ce dont il a besoin ══ */}
+        <div className="flex-shrink-0 px-2 pt-1 pb-1 flex flex-col gap-1.5">
           <BankrollHeader
             bankroll={state.bankroll}
             initialDeposit={state.initialDeposit}
@@ -165,31 +163,25 @@ export default function Home() {
             losses={state.losses}
             onOpenSettings={() => setShowSettings(true)}
           />
-
-          {/* Tableau des signaux (WAIT / PLAY / KILLER) + χ² + offset */}
           <SignalCard result={result} bufferSize={bufferSize} />
-
-          {/* Smart Splits — répartition des jetons sur la bankroll */}
           <BetCard result={result} bankroll={state.bankroll} profit={profit} />
-
         </div>
 
-        {/* ══ ZONE 3 : GRILLE 0-36 ONE-TAP + CONTRÔLES (bas, fixe) ══ */}
+        {/* ══ ZONE 3 : GRILLE + CONTRÔLES — prend tout l'espace restant ══ */}
         <div
-          className="flex-shrink-0 border-t border-border"
-          style={{
-            paddingTop:    6,
-            paddingLeft:   8,
-            paddingRight:  8,
-            paddingBottom: 'max(16px, var(--sab))',
-          }}
+          className="flex-1 min-h-0 flex flex-col border-t border-border"
+          style={{ paddingTop: 6, paddingLeft: 8, paddingRight: 8, paddingBottom: 'max(20px, var(--sab))' }}
         >
-          <NumberPad
-            onSpin={addSpin}
-            recentSpins={state.spins}
-            disabled={false}
-          />
-          <div style={{ marginTop: 6 }}>
+          {/* Grille prend tout l'espace disponible */}
+          <div className="flex-1 min-h-0">
+            <NumberPad
+              onSpin={addSpin}
+              recentSpins={state.spins}
+              disabled={false}
+            />
+          </div>
+          {/* Contrôles toujours visibles en bas */}
+          <div className="flex-shrink-0" style={{ marginTop: 6 }}>
             <ControlBar
               onUndo={undoSpin}
               onReset={resetCycle}
