@@ -28,8 +28,12 @@ export const SECTOR_COLORS: Record<SectorKey, string> = {
 }
 
 // ── Smart Splits ─────────────────────────────────────────────
+// Voisins: 9 jetons standard — 0/2/3 (×2), 4/7, 12/15, 18/21, 19/22,
+//          25/26/28/29 carré (×2), 32/35
+// Tiers: 6 jetons — 5/8, 10/11, 13/16, 23/24, 27/30, 33/36
+// Orphelins: 5 jetons — 1-plein, 6/9, 14/17, 17/20, 31/34
 export const SMART_SPLITS: Record<SectorKey, { splits: [number,number][]; pleins: number[] }> = {
-  voisins:   { splits: [[0,3],[12,15],[32,35]],              pleins: [26] },
+  voisins:   { splits: [[0,3],[0,2],[4,7],[12,15],[18,21],[19,22],[25,28],[26,29],[32,35]], pleins: [] },
   tiers:     { splits: [[5,8],[10,11],[13,16],[23,24],[27,30],[33,36]], pleins: [] },
   orphelins: { splits: [[6,9],[14,17],[17,20],[31,34]],      pleins: [1] },
 }

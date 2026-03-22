@@ -24,8 +24,11 @@ const SECTOR_LABELS = {
 };
 
 // Smart Splits per sector (chevals + pleins)
+// Voisins: 9 jetons — 0/2/3 (×2), 4/7, 12/15, 18/21, 19/22, carré 25/26/28/29 (×2), 32/35
+// Tiers: 6 jetons — 5/8, 10/11, 13/16, 23/24, 27/30, 33/36
+// Orphelins: 5 jetons — 1-plein, 6/9, 14/17, 17/20, 31/34
 const SMART_SPLITS = {
-  voisins:   { splits: [[0,3],[12,15],[32,35]], pleins: [26] },
+  voisins:   { splits: [[0,3],[0,2],[4,7],[12,15],[18,21],[19,22],[25,28],[26,29],[32,35]], pleins: [] },
   tiers:     { splits: [[5,8],[10,11],[13,16],[23,24],[27,30],[33,36]], pleins: [] },
   orphelins: { splits: [[6,9],[14,17],[17,20],[31,34]], pleins: [1] }
 };
@@ -206,19 +209,13 @@ function getExecutionStrategy(bankroll, profit, signalScore, bestSector) {
     totalBet  = bankroll * pct;
   }
 
-  // Enforce 1€ minimum per position — round to whole euros, trim if needed
-  let betPerSplit = Math.round(totalBet / maxN);
-  let n;
-  if (betPerSplit < 1) {
-    betPerSplit = 1;
-    n = Math.max(1, Math.floor(totalBet));
-  } else {
-    n = maxN;
-  }
-  totalBet = betPerSplit * n;
+  // Always cover the FULL sector — 1€ minimum per position, never trim
+  const betPerSplit = Math.max(1, Math.round(totalBet / maxN));
+  const n           = maxN;
+  totalBet          = betPerSplit * n;
 
-  const splits        = allSplits.slice(0, n);
-  // Always use 35x payout (consistent with bankroll win formula)
+  const splits        = allSplits;
+  // Win = bet_per_split × 35 − mise_totale
   const potentialGain = betPerSplit * 35 - totalBet;
 
   return { phase, totalBet, betPerSplit, numBets: n, splits, potentialGain };

@@ -158,19 +158,13 @@ function getStrategy(key: SectorKey, confidence: number, bankroll: number, profi
     totalBet  = bankroll * pct
   }
 
-  // Enforce 1€ minimum per position — round to whole euros, trim positions if needed
-  let bps = Math.round(totalBet / maxN)
-  let n: number
-  if (bps < 1) {
-    bps = 1
-    n   = Math.max(1, Math.floor(totalBet))
-  } else {
-    n = maxN
-  }
-  totalBet = bps * n
+  // Always cover the FULL sector — 1€ minimum per position, never trim
+  const bps     = Math.max(1, Math.round(totalBet / maxN))
+  const n       = maxN
+  totalBet      = bps * n
 
-  const splits        = allSplits.slice(0, n)
-  // Always use 35x payout (consistent with bankroll win formula)
+  const splits        = allSplits
+  // Win = bet_per_split × 35 − mise_totale
   const potentialGain = bps * 35 - totalBet
 
   return { phase, totalBet, bps, n, splits, potentialGain }
