@@ -33,7 +33,7 @@ function chiSqPValue(chi2: number, df: number): number {
 
 // Exponential decay weighting: most recent spin = weight 1, older = ×λ each step
 // λ=0.4 → dernier numéro saisi domine fortement, l'historique s'efface vite
-const RECENCY_LAMBDA = 0.4
+const RECENCY_LAMBDA = 0.3
 
 function zScore(win: Spin[], nums: number[]): number {
   const n = win.length

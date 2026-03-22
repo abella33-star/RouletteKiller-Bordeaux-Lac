@@ -65,7 +65,7 @@ function chiSqPValue(chi2, df) {
 // ───────────────────────────────────────────────────────────────
 
 // Exponential decay weighting: most recent spin = weight 1, older = ×λ each step
-const RECENCY_LAMBDA = 0.4;
+const RECENCY_LAMBDA = 0.3;
 
 function zScore(win, nums) {
   const n = win.length;
