@@ -42,9 +42,10 @@ export function useRouletteState() {
   const [loaded, setLoaded] = useState(false)
 
   // Use ref for worker to avoid re-renders
-  const workerRef = useRef<Worker | null>(null)
-  const pendingRef = useRef<Map<number, (r: EngineResult) => void>>(new Map())
-  const idRef     = useRef(0)
+  const workerRef   = useRef<Worker | null>(null)
+  const pendingRef  = useRef<Map<number, (r: EngineResult) => void>>(new Map())
+  const idRef       = useRef(0)
+  const latestIdRef = useRef(-1) // tracks the most recent engine call — stale results are discarded
 
   // ── Load persisted state ──────────────────────────────────────
   useEffect(() => {
@@ -88,6 +89,7 @@ export function useRouletteState() {
 
     if (workerRef.current) {
       const id = idRef.current++
+      latestIdRef.current = id // mark this as the most recent request
       const promise = new Promise<EngineResult>((res) => {
         const timer = setTimeout(() => {
           if (pendingRef.current.has(id)) {
@@ -100,6 +102,8 @@ export function useRouletteState() {
       const profit = bankroll - initialDeposit
       workerRef.current.postMessage({ id, history, bankroll, initialDeposit, profit })
       promise.then(result => {
+        // Discard stale results: only apply if this is still the latest request
+        if (id < latestIdRef.current) return
         setState(prev => ({ ...prev, lastEngineResult: result }))
         // Haptic for signal change
         if      (result.status === 'KILLER') haptics.killer()
@@ -107,6 +111,7 @@ export function useRouletteState() {
         else if (result.status === 'NOISE')  haptics.noise()
       })
     } else {
+      latestIdRef.current = idRef.current++
       const result = processData(spins, bankroll, initialDeposit)
       setState(prev => ({ ...prev, lastEngineResult: result }))
     }
@@ -185,6 +190,9 @@ export function useRouletteState() {
   // ── Reset cycle ───────────────────────────────────────────────
   const resetCycle = useCallback(() => {
     haptics.reset()
+    // Invalidate all in-flight engine results so stale responses don't overwrite the reset
+    latestIdRef.current = idRef.current++
+    pendingRef.current.clear()
     setState(prev => ({
       ...prev,
       spins:           [],
