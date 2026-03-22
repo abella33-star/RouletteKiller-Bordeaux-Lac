@@ -218,8 +218,8 @@ export function processData(
   if (offset.detected) confidence = Math.min(100, confidence * 1.30)
   confidence = Math.round(confidence * 10) / 10
 
-  // 5. Noise gate
-  if (noise && confidence < SIGNAL_THRESHOLDS.NOISE_GATE) {
+  // 5. Noise gate — bypassed when Z > 2.5 (sector anomaly takes priority)
+  if (noise && confidence < SIGNAL_THRESHOLDS.NOISE_GATE && best.Z <= 2.5) {
     return _out('NOISE', confidence,
       { target:'NOISE', type:'—', splits:[], bet_per_split:0, bet_value:0, num_bets:0 },
       `Distributions aléatoires — χ²-col p=${cTest.pValue.toFixed(3)}, χ²-par p=${pTest.pValue.toFixed(3)}`,
@@ -234,6 +234,12 @@ export function processData(
     status = 'PLAY'
   } else {
     status = 'WAIT'
+  }
+
+  // Early anomaly override: N≥3 + Z>2.5 → force PLAY (répétition visible dès 3 tirages)
+  if (win.length >= 3 && best.Z > 2.5 && status === 'WAIT') {
+    status = 'PLAY'
+    confidence = Math.max(confidence, 35)
   }
 
   if (status === 'WAIT') {

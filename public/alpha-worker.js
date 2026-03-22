@@ -267,11 +267,30 @@ function processData(history, bankroll, initialDeposit, profit) {
   let confidence = best.confidence;
   if (offset.detected) confidence = Math.min(100, confidence * 1.30);
 
-  // ── 5. Noise gate ────────────────────────────────────────────
-  if (noiseGlobal && confidence < 75) {
+  // ── 5. Noise gate — bypassed when Z > 2.5 (sector anomaly takes priority)
+  if (noiseGlobal && confidence < 75 && best.Z <= 2.5) {
     return _out('NOISE', confidence,
       { target: 'NOISE', type: '—', splits: [], bet_per_split: 0, bet_value: 0, num_bets: 0 },
       `Distributions aléatoires — χ²-col p=${cTest.pValue.toFixed(3)}, χ²-par p=${pTest.pValue.toFixed(3)}`,
+      0, '—', sectorData, cTest, pTest, offset, performance.now() - t0
+    );
+  }
+
+  // ── 5b. Early anomaly: N≥3 + Z>2.5 → force PLAY (répétition dès 3 tirages)
+  let status;
+  if (confidence >= 90) status = 'KILLER';
+  else if (confidence >= 70) status = 'PLAY';
+  else status = 'WAIT';
+
+  if (win.length >= 3 && best.Z > 2.5 && status === 'WAIT') {
+    status = 'PLAY';
+    confidence = Math.max(confidence, 35);
+  }
+
+  if (status === 'WAIT') {
+    return _out('WAIT', Math.round(confidence * 10) / 10,
+      { target: SECTOR_LABELS[bestKey], type: 'Attendre', splits: [], bet_per_split: 0, bet_value: 0, num_bets: 0 },
+      `Signal faible (${confidence.toFixed(1)}%) — Z=${best.Z.toFixed(2)}σ · attendre renforcement`,
       0, '—', sectorData, cTest, pTest, offset, performance.now() - t0
     );
   }
@@ -288,11 +307,7 @@ function processData(history, bankroll, initialDeposit, profit) {
   if (!pTest.isNoise)  parts.push(`Signal parité p=${pTest.pValue.toFixed(3)}`);
   const reason = parts.join(' + ');
 
-  let status;
-  if (confidence >= 90) status = 'KILLER';
-  else if (confidence >= 70) status = 'PLAY';
-  else status = 'WAIT';
-
+  // status already set above (with early anomaly override)
   const type = strat.phase === 'Sniper'
     ? '🎯 Smart Splits SNIPER'
     : `Smart Splits Prudent`;
