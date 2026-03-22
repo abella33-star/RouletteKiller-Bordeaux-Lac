@@ -245,6 +245,7 @@ function addSpin(number) {
 
   save();
   refresh();
+  triggerBordeaux();
 }
 
 // ===== RECORD WIN/LOSS =====
@@ -735,6 +736,85 @@ function runBacktest() {
     }).join('') + '</div>';
 }
 
+// ===== BORDEAUX ENGINE RENDERING =====
+function renderBordeaux(result) {
+  if (!result) return;
+
+  const sig = result.signal.toLowerCase();
+  const conf = result.confidence;
+  const barColor = sig === 'high' ? '#00E676' : sig === 'medium' ? '#FF9800' : sig === 'noise' ? '#E30613' : '#555';
+
+  // Dot
+  const dot = document.getElementById('bx-dot');
+  dot.className = `bx-dot ${sig}`;
+
+  // Signal label
+  const lbl = document.getElementById('bx-signal-lbl');
+  const labelText = { high: 'HIGH ⚡', medium: 'MEDIUM', low: 'LOW', noise: 'NOISE 🚫' };
+  lbl.textContent = labelText[sig] || sig;
+  lbl.className = `bx-signal-lbl ${sig}`;
+
+  // Confidence bar
+  document.getElementById('bx-bar-fill').style.cssText = `width:${conf}%;background:${barColor}`;
+  const confEl = document.getElementById('bx-conf-val');
+  confEl.textContent = `${conf}%`;
+  confEl.style.color = barColor;
+
+  // Details
+  document.getElementById('bx-target').textContent = result.target;
+  document.getElementById('bx-target').style.color = sig === 'noise' ? 'var(--red)' : sig === 'high' ? 'var(--green)' : 'var(--text)';
+  document.getElementById('bx-bet').textContent = result.bet_units > 0 ? fmt(result.bet_units) : '—';
+  const ct = result.colorTest;
+  const pEl = document.getElementById('bx-pval');
+  if (ct) {
+    pEl.textContent = `p=${ct.pValue.toFixed(3)}`;
+    pEl.style.color = ct.isNoise ? 'var(--red)' : 'var(--green)';
+  } else {
+    pEl.textContent = 'p=—';
+    pEl.style.color = 'var(--muted)';
+  }
+
+  // Per-sector Z-score bars
+  const secContainer = document.getElementById('bx-sectors');
+  secContainer.innerHTML = '';
+  const sectorLabels = { voisins: 'Voisins (17)', tiers: 'Tiers (12)', orphelins: 'Orphelins (8)' };
+  if (result.sectors) {
+    for (const [key, data] of Object.entries(result.sectors)) {
+      const Z = data.Z;
+      const pct = Math.min(100, Math.max(0, (Z / 3) * 100)); // map 0–3σ to 0–100%
+      const fillClass = Z < 0 ? 'bx-z-neg' : Z < 1 ? 'bx-z-pos-low' : Z < 2 ? 'bx-z-pos-mid' : 'bx-z-pos-high';
+      const row = document.createElement('div');
+      row.className = 'bx-sector-row';
+      row.innerHTML = `
+        <span class="bx-sector-name">${sectorLabels[key] || key}</span>
+        <div class="bx-z-track"><div class="bx-z-fill ${fillClass}" style="width:${Math.max(0,pct)}%"></div></div>
+        <span class="bx-z-val" style="color:${Z>=2?'var(--green)':Z>=1?'var(--orange)':'var(--muted)'}">${Z>=0?'+':''}${Z.toFixed(2)}σ</span>
+        <span class="bx-bayes">${(data.posterior*100).toFixed(0)}%</span>`;
+      secContainer.appendChild(row);
+    }
+  }
+
+  // Reason
+  const reasonEl = document.getElementById('bx-reason');
+  reasonEl.textContent = result.reason;
+  reasonEl.className = `bx-reason ${sig}`;
+
+  // Latency tag
+  const latTag = document.getElementById('bx-latency');
+  if (result.latency !== undefined) {
+    latTag.textContent = `${result.latency}ms`;
+    latTag.style.color = result.latency < 20 ? 'var(--green)' : result.latency < 50 ? 'var(--orange)' : 'var(--red)';
+  }
+}
+
+// Trigger Bordeaux analysis (async, non-blocking)
+function triggerBordeaux() {
+  if (!window.bordeauxEngine) return;
+  window.bordeauxEngine.analyze(state.spins, state.currentBankroll)
+    .then(renderBordeaux)
+    .catch(() => {});
+}
+
 // ===== INIT =====
 function init() {
   load();
@@ -752,6 +832,7 @@ function init() {
     document.getElementById('signal-expired-overlay').classList.remove('hidden');
   }
   refresh();
+  triggerBordeaux();
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
 }
 

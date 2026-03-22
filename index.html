@@ -212,6 +212,49 @@
       <div class="decision-footer" id="decision-footer"></div>
     </div>
 
+    <!-- BORDEAUX CORE ENGINE CARD -->
+    <div class="card bx-card" id="bordeaux-card">
+      <div class="section-title">
+        BORDEAUX CORE ENGINE
+        <div style="display:flex;gap:6px;align-items:center">
+          <span class="elite-badge">ELITE</span>
+          <span class="latency-tag" id="bx-latency">—ms</span>
+        </div>
+      </div>
+
+      <!-- Signal row -->
+      <div class="bx-signal-row">
+        <div class="bx-dot" id="bx-dot"></div>
+        <span class="bx-signal-lbl" id="bx-signal-lbl">—</span>
+        <div class="bx-bar-track">
+          <div class="bx-bar-fill" id="bx-bar-fill" style="width:0%"></div>
+        </div>
+        <span class="bx-conf-val" id="bx-conf-val">0%</span>
+      </div>
+
+      <!-- Details row -->
+      <div class="bx-details">
+        <div class="bx-detail">
+          <div class="bx-dval" id="bx-target">—</div>
+          <div class="bx-dlbl">CIBLE</div>
+        </div>
+        <div class="bx-detail">
+          <div class="bx-dval gold" id="bx-bet">0.00€</div>
+          <div class="bx-dlbl">MISE KELLY</div>
+        </div>
+        <div class="bx-detail">
+          <div class="bx-dval" id="bx-pval">p=—</div>
+          <div class="bx-dlbl">χ² couleurs</div>
+        </div>
+      </div>
+
+      <!-- Z-Score bars per sector -->
+      <div class="bx-sectors" id="bx-sectors"></div>
+
+      <!-- Reason -->
+      <div class="bx-reason" id="bx-reason">En attente des données…</div>
+    </div>
+
     <!-- STRATEGY PROFILES -->
     <div class="card">
       <div class="section-title">STRATÉGIE</div>
@@ -273,6 +316,7 @@
   </div>
 
   <script src="js/engines.js"></script>
+  <script src="js/bordeaux-engine.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
