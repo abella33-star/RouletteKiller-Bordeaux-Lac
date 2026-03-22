@@ -1,0 +1,318 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		B001 /* RouletteKillerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A001 /* RouletteKillerApp.swift */; };
+		B002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A002 /* ContentView.swift */; };
+		B003 /* SpinData.swift in Sources */ = {isa = PBXBuildFile; fileRef = A003 /* SpinData.swift */; };
+		B004 /* RouletteProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = A004 /* RouletteProfile.swift */; };
+		B005 /* SessionStats.swift in Sources */ = {isa = PBXBuildFile; fileRef = A005 /* SessionStats.swift */; };
+		B006 /* RouletteViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A006 /* RouletteViewModel.swift */; };
+		B007 /* OpportunityScoreEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A007 /* OpportunityScoreEngine.swift */; };
+		B008 /* ChiSquareAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A008 /* ChiSquareAnalyzer.swift */; };
+		B009 /* MoneyManagementEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A009 /* MoneyManagementEngine.swift */; };
+		B010 /* StrategySelector.swift in Sources */ = {isa = PBXBuildFile; fileRef = A010 /* StrategySelector.swift */; };
+		B011 /* Color+Casino.swift in Sources */ = {isa = PBXBuildFile; fileRef = A011 /* Color+Casino.swift */; };
+		B012 /* CircularGaugeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A012 /* CircularGaugeView.swift */; };
+		B013 /* BankrollHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A013 /* BankrollHeaderView.swift */; };
+		B014 /* SpinInputView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A014 /* SpinInputView.swift */; };
+		B015 /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A015 /* HistoryView.swift */; };
+		B016 /* BankrollSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A016 /* BankrollSettingsView.swift */; };
+		B017 /* StrategyProfilesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A017 /* StrategyProfilesView.swift */; };
+		B018 /* BacktestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A018 /* BacktestView.swift */; };
+		B019 /* AntiTiltView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A019 /* AntiTiltView.swift */; };
+		B020 /* DecisionCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A020 /* DecisionCardView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		A001 /* RouletteKillerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouletteKillerApp.swift; sourceTree = "<group>"; };
+		A002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		A003 /* SpinData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpinData.swift; sourceTree = "<group>"; };
+		A004 /* RouletteProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouletteProfile.swift; sourceTree = "<group>"; };
+		A005 /* SessionStats.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStats.swift; sourceTree = "<group>"; };
+		A006 /* RouletteViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouletteViewModel.swift; sourceTree = "<group>"; };
+		A007 /* OpportunityScoreEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpportunityScoreEngine.swift; sourceTree = "<group>"; };
+		A008 /* ChiSquareAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChiSquareAnalyzer.swift; sourceTree = "<group>"; };
+		A009 /* MoneyManagementEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoneyManagementEngine.swift; sourceTree = "<group>"; };
+		A010 /* StrategySelector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StrategySelector.swift; sourceTree = "<group>"; };
+		A011 /* Color+Casino.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Color+Casino.swift; sourceTree = "<group>"; };
+		A012 /* CircularGaugeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CircularGaugeView.swift; sourceTree = "<group>"; };
+		A013 /* BankrollHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BankrollHeaderView.swift; sourceTree = "<group>"; };
+		A014 /* SpinInputView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpinInputView.swift; sourceTree = "<group>"; };
+		A015 /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
+		A016 /* BankrollSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BankrollSettingsView.swift; sourceTree = "<group>"; };
+		A017 /* StrategyProfilesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StrategyProfilesView.swift; sourceTree = "<group>"; };
+		A018 /* BacktestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BacktestView.swift; sourceTree = "<group>"; };
+		A019 /* AntiTiltView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AntiTiltView.swift; sourceTree = "<group>"; };
+		A020 /* DecisionCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DecisionCardView.swift; sourceTree = "<group>"; };
+		PROD /* RouletteKiller.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RouletteKiller.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		FRM1 = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = ();
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		GRP_ROOT = {
+			isa = PBXGroup;
+			children = (
+				GRP_APP,
+				PROD,
+			);
+			sourceTree = "<group>";
+		};
+		GRP_APP = {
+			isa = PBXGroup;
+			children = (
+				A001,
+				A002,
+				GRP_MODELS,
+				GRP_VIEWMODELS,
+				GRP_VIEWS,
+				GRP_ENGINES,
+				GRP_EXT,
+			);
+			path = RouletteKiller;
+			sourceTree = "<group>";
+		};
+		GRP_MODELS = {
+			isa = PBXGroup;
+			children = (A003, A004, A005);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		GRP_VIEWMODELS = {
+			isa = PBXGroup;
+			children = (A006);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		GRP_VIEWS = {
+			isa = PBXGroup;
+			children = (A012, A013, A014, A015, A016, A017, A018, A019, A020);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		GRP_ENGINES = {
+			isa = PBXGroup;
+			children = (A007, A008, A009, A010);
+			path = Engines;
+			sourceTree = "<group>";
+		};
+		GRP_EXT = {
+			isa = PBXGroup;
+			children = (A011);
+			path = Extensions;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		TGT1 = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CFG_LIST;
+			buildPhases = (SRC1, FRM1);
+			buildRules = ();
+			dependencies = ();
+			name = RouletteKiller;
+			productName = RouletteKiller;
+			productReference = PROD;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		PROJ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1600;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					TGT1 = {
+						CreatedOnToolsVersion = 16.0;
+					};
+				};
+			};
+			buildConfigurationList = PROJ_CFG_LIST;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = fr;
+			hasScannedForEncodings = 0;
+			knownRegions = (fr, en, Base);
+			mainGroup = GRP_ROOT;
+			productRefGroup = GRP_ROOT;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (TGT1);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		SRC1 = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B001, B002, B003, B004, B005, B006, B007, B008,
+				B009, B010, B011, B012, B013, B014, B015, B016,
+				B017, B018, B019, B020,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		CFG_DEBUG = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UIUserInterfaceStyle = Dark;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.roulettekiller.bordeauxlac;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		CFG_RELEASE = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UIUserInterfaceStyle = Dark;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.roulettekiller.bordeauxlac;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		PROJ_DEBUG = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = "DEBUG=1 $(inherited)";
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		PROJ_RELEASE = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		CFG_LIST = {
+			isa = XCConfigurationList;
+			buildConfigurations = (CFG_DEBUG, CFG_RELEASE);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		PROJ_CFG_LIST = {
+			isa = XCConfigurationList;
+			buildConfigurations = (PROJ_DEBUG, PROJ_RELEASE);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+	};
+	rootObject = PROJ;
+}
