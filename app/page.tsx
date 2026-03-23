@@ -164,7 +164,12 @@ export default function Home() {
             onOpenSettings={() => setShowSettings(true)}
           />
           <SignalCard result={result} bufferSize={bufferSize} />
-          <BetCard key={state.spins.length} result={result} bankroll={state.bankroll} profit={profit} />
+          <BetCard
+            key={`${state.spins.length}-${result?.recommendation?.target ?? 'wait'}`}
+            result={result}
+            bankroll={state.bankroll}
+            profit={profit}
+          />
         </div>
 
         {/* ══ ZONE 3 : GRILLE + CONTRÔLES — prend tout l'espace restant ══ */}
