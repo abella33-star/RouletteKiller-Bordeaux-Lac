@@ -178,11 +178,18 @@ function getStrategy(key: SectorKey, confidence: number, bankroll: number, profi
   const n       = maxN
   totalBet      = bps * n
 
-  const splits        = allSplits
-  // Win = bet_per_split × 35 − mise_totale
-  const potentialGain = bps * 35 - totalBet
+  const splits = allSplits
+  const numSplits = SMART_SPLITS[key].splits.length
+  const numPleins = SMART_SPLITS[key].pleins.length
 
-  return { phase, totalBet, bps, n, splits, potentialGain }
+  // Gain net si un SPLIT touche : mise_pos × 17 − mise_totale (split paye 17:1)
+  // Gain net si un PLEIN touche : mise_pos × 35 − mise_totale (plein paye 35:1)
+  // On affiche le cas split (majorité des positions) comme gain de référence
+  const potentialGain = numSplits > 0
+    ? bps * 17 - totalBet   // split 17:1
+    : bps * 35 - totalBet   // secteur 100% pleins (rare)
+
+  return { phase, totalBet, bps, n, splits, potentialGain, numSplits, numPleins }
 }
 
 // ── Main ─────────────────────────────────────────────────────

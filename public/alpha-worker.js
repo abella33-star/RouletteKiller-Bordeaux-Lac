@@ -231,9 +231,14 @@ function getExecutionStrategy(bankroll, profit, signalScore, bestSector) {
   const n           = maxN;
   totalBet          = betPerSplit * n;
 
-  const splits        = allSplits;
-  // Win = bet_per_split × 35 − mise_totale
-  const potentialGain = betPerSplit * 35 - totalBet;
+  const splits    = allSplits;
+  const nSplits   = SMART_SPLITS[bestSector].splits.length;
+
+  // Split paye 17:1 → gain net = mise_pos × 17 − mise_totale
+  // Plein paye 35:1 → gain net = mise_pos × 35 − mise_totale
+  const potentialGain = nSplits > 0
+    ? betPerSplit * 17 - totalBet
+    : betPerSplit * 35 - totalBet;
 
   return { phase, totalBet, betPerSplit, numBets: n, splits, potentialGain };
 }

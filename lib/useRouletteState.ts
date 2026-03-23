@@ -130,8 +130,10 @@ export function useRouletteState() {
       if (last && (last.status === 'PLAY' || last.status === 'KILLER')) {
         const covered = isNumberCovered(number, last.recommendation.splits)
         if (covered) {
-          // Win: mise_sur_numéro × 35 - mise_totale
-          const gain = last.recommendation.bet_per_split * 35 - last.recommendation.bet_value
+          // Détecter si la position gagnante est un plein (35:1) ou un split (17:1)
+          const winningSplit = last.recommendation.splits.find(s => isNumberCovered(number, [s]))
+          const payout = winningSplit?.includes('plein') ? 35 : 17
+          const gain = last.recommendation.bet_per_split * payout - last.recommendation.bet_value
           bankroll = Math.round((bankroll + gain) * 100) / 100
           wins++
           consecutiveLoss = 0
