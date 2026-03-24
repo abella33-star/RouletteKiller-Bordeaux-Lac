@@ -53,9 +53,13 @@ export default function BetCard({ result, bankroll, profit }: Props) {
 
   const rec        = isActive ? (result?.recommendation ?? null) : null
   const sectorKey  = rec ? getSectorKey(rec.target) : null
+  const subArc     = isActive ? (result?.subArc ?? null) : null
 
-  // Splits générés par switch(sectorKey) — jamais statiques
-  const splits     = getSplitsForSector(sectorKey)
+  // Priorité : rec.splits contient déjà le sous-arc calculé par l'engine
+  // Fallback : switch(sectorKey) si rec.splits vide (ne devrait pas arriver)
+  const splits = (rec?.splits && rec.splits.length > 0)
+    ? rec.splits
+    : getSplitsForSector(sectorKey)
 
   const betValue    = rec?.bet_value    ?? 0
   const betPerSplit = rec?.bet_per_split ?? 0
@@ -89,7 +93,7 @@ export default function BetCard({ result, bankroll, profit }: Props) {
       {/* ── Header ── */}
       <div className="flex items-center justify-between">
         <div className="rk-label" style={{ marginBottom: 0 }}>
-          {isSniper ? '🎯 SMART SPLITS — SNIPER' : 'SMART SPLITS — PRUDENT'}
+          {isSniper ? '🎯 SMART PLEINS — SNIPER' : 'SMART PLEINS — PRUDENT'}
         </div>
         <div className="flex items-center gap-1.5">
           {isActive && sectorKey && (
@@ -120,7 +124,7 @@ export default function BetCard({ result, bankroll, profit }: Props) {
         </div>
       ) : (
         <>
-          {/* ── Preuve engine : Z + obs/exp ── */}
+          {/* ── Preuve engine : Z secteur + arc chaud + dual-fenêtre ── */}
           {sectorData && (
             <div
               className="flex items-center gap-2 rounded-md px-2 py-1"
@@ -129,11 +133,16 @@ export default function BetCard({ result, bankroll, profit }: Props) {
               <span className="text-[9px] font-black tabular-nums" style={{ color: sectorColor }}>
                 Z = +{sectorData.Z.toFixed(2)}σ
               </span>
-              <span className="text-[8px] text-muted">
-                Obs {sectorData.k} / Att {sectorData.E.toFixed(1)}
-              </span>
+              {subArc && (
+                <span className="text-[8px] font-black tabular-nums" style={{ color: sectorColor }}>
+                  Arc {subArc.numbers.length}num +{subArc.arcZ.toFixed(2)}σ
+                </span>
+              )}
+              {result?.dualWindowConfirmed && (
+                <span className="text-[8px] font-black text-neon">✓ dual</span>
+              )}
               <span className="text-[8px] text-muted ml-auto">
-                → {numBets} positions · {fmtBet(betPerSplit)}/pos
+                {numBets} pleins · {fmtBet(betPerSplit)}/pos
               </span>
             </div>
           )}

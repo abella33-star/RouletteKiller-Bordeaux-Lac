@@ -1,12 +1,17 @@
 /**
- * Bordeaux Alpha-Predator Engine — TypeScript (synchronous version)
+ * Bordeaux Alpha-Predator Engine v2 — TypeScript (synchronous version)
  * Mirrors the logic in public/alpha-worker.js exactly.
- * Used as: direct call OR via Web Worker (alpha-worker.js in public/).
+ *
+ * Améliorations v2 :
+ *   A. RECENCY_LAMBDA 0.3 → 0.75  (nEff ≈ 4 spins effectifs, Z plus stable)
+ *   B. sectorConfidence = normalCDF(Z)×100  (probabilité unilatérale exacte)
+ *   C. dualWindowDominant()  — confirmation courte (8) + longue (24) fenêtre
+ *   D. findHotSubArc()       — arc consécutif le plus chaud dans le secteur
  */
-import type { Spin, EngineResult, SectorData, SectorKey, OffsetAnalysis } from './types'
+import type { Spin, EngineResult, SectorData, SectorKey, OffsetAnalysis, SubArcResult } from './types'
 import {
   CYLINDER, SMART_SPLITS, SECTOR_LABELS, RED_NUMBERS, EVEN_NUMBERS,
-  WHEEL_POS, SIGNAL_THRESHOLDS, BET_RULES,
+  WHEEL_POS, SIGNAL_THRESHOLDS, BET_RULES, SUB_ARC_SIZES,
 } from './constants'
 
 // ── Math helpers ─────────────────────────────────────────────
@@ -31,9 +36,8 @@ function chiSqPValue(chi2: number, df: number): number {
 
 // ── Sector statistics ─────────────────────────────────────────
 
-// Exponential decay weighting: most recent spin = weight 1, older = ×λ each step
-// λ=0.4 → dernier numéro saisi domine fortement, l'historique s'efface vite
-const RECENCY_LAMBDA = 0.3
+// A. λ=0.75 → nEff = 1/(1-0.75) ≈ 4.0 spins effectifs (était 1.4 avec λ=0.3)
+const RECENCY_LAMBDA = 0.75
 
 function zScore(win: Spin[], nums: number[]): number {
   const n = win.length
@@ -41,7 +45,7 @@ function zScore(win: Spin[], nums: number[]): number {
   const p = nums.length / 37
   let nEff = 0, kEff = 0
   for (let i = 0; i < n; i++) {
-    const w = Math.pow(RECENCY_LAMBDA, n - 1 - i) // oldest→lowest weight, newest→1.0
+    const w = Math.pow(RECENCY_LAMBDA, n - 1 - i) // oldest→lowest, newest→1.0
     nEff += w
     if (nums.includes(win[i].number)) kEff += w
   }
@@ -62,12 +66,12 @@ function bayesianPosterior(win: Spin[], nums: number[], m = 4): number {
   return (kEff + p * m) / (nEff + m)
 }
 
+// B. Probabilité unilatérale exacte : normalCDF(Z) × 100
 function sectorConfidence(win: Spin[], nums: number[]): number {
   if (win.length < 1) return 0
   const Z = zScore(win, nums)
   if (Z <= 0) return 0
-  // Ultra-sensitivity + recency bias: réagit dès le dernier numéro saisi
-  return Math.min(100, Math.max(0, Z * 40))
+  return Math.round(normalCDF(Z) * 1000) / 10  // 0.0 – 100.0
 }
 
 // ── Chi-Square noise filters ──────────────────────────────────
@@ -115,9 +119,8 @@ function analyzeOffset(spins: Spin[]): OffsetAnalysis {
   const recent = valid.slice(-10)
   if (recent.length < 3) return NONE
 
-  // Bidirectional: cylinder rotates CW, ball CCW — take minimum physical distance
-  const DAMPING = 1          // ±1 pocket glissement on Alfastreet carpet
-  const CLUSTER_TOL = 2 + DAMPING  // = 3 positions tolerance
+  const DAMPING = 1
+  const CLUSTER_TOL = 2 + DAMPING  // ±3 positions
 
   const offsets = recent.map(s => {
     const sp = WHEEL_POS[s.starting_point!]
@@ -144,23 +147,75 @@ function analyzeOffset(spins: Spin[]): OffsetAnalysis {
   }
 }
 
+// ── C. Double fenêtre de confirmation ─────────────────────────
+
+/**
+ * Retourne le secteur dominant UNIQUEMENT si les deux fenêtres s'accordent.
+ * Fenêtre courte = 8 derniers spins.
+ * Fenêtre longue = 24 derniers spins (fenêtre principale).
+ */
+function dualWindowDominant(spins: Spin[]): SectorKey | null {
+  const winShort = spins.slice(-8)
+  const winLong  = spins.slice(-Math.min(24, spins.length))
+
+  if (winShort.length < 4) return null  // pas assez de données pour la courte fenêtre
+
+  const keys: SectorKey[] = ['voisins', 'tiers', 'orphelins']
+  const dominantIn = (win: Spin[]): SectorKey =>
+    keys.reduce((best, k) =>
+      zScore(win, CYLINDER[k]) > zScore(win, CYLINDER[best]) ? k : best
+    , keys[0])
+
+  const shortDom = dominantIn(winShort)
+  const longDom  = dominantIn(winLong)
+
+  return shortDom === longDom ? shortDom : null  // null = désaccord entre fenêtres
+}
+
+// ── D. Sous-arc chaud (sliding window sur cylindre physique) ──
+
+/**
+ * Trouve l'arc consécutif de min à max numéros dans le secteur
+ * avec le Z-score le plus élevé.
+ * CYLINDER[key] est déjà en ordre physique cylindre → les indices consécutifs
+ * correspondent à des poches consécutives sur la roue.
+ */
+function findHotSubArc(win: Spin[], sectorKey: SectorKey): SubArcResult | null {
+  const nums = CYLINDER[sectorKey]
+  const { min, max } = SUB_ARC_SIZES[sectorKey]
+  const n = nums.length
+  let bestZ = 0, bestArc: number[] = []
+
+  for (let arcLen = min; arcLen <= max; arcLen++) {
+    for (let start = 0; start < n; start++) {
+      const arc: number[] = []
+      for (let j = 0; j < arcLen; j++) arc.push(nums[(start + j) % n])
+      const z = zScore(win, arc)
+      if (z > bestZ) { bestZ = z; bestArc = arc }
+    }
+  }
+
+  if (bestZ <= 0 || bestArc.length === 0) return null
+  return {
+    numbers:       bestArc,
+    arcZ:          Math.round(bestZ * 1000) / 1000,
+    arcConfidence: Math.round(normalCDF(bestZ) * 1000) / 10,
+  }
+}
+
 // ── Strategy ─────────────────────────────────────────────────
 
-function formatSplits(key: SectorKey): string[] {
-  const s = SMART_SPLITS[key]
-  return [
-    ...s.splits.map(([a,b]) => `${a}/${b}`),
-    ...s.pleins.map(n => `${n}-plein`),
-  ]
-}
-
-function numBets(key: SectorKey): number {
-  return SMART_SPLITS[key].splits.length + SMART_SPLITS[key].pleins.length
-}
-
-function getStrategy(key: SectorKey, confidence: number, bankroll: number, profit: number) {
-  const allSplits = formatSplits(key)
-  const maxN      = numBets(key)
+function getStrategy(
+  key: SectorKey,
+  confidence: number,
+  bankroll: number,
+  profit: number,
+  subArc: SubArcResult | null,
+) {
+  // Jouer le sous-arc si disponible, sinon tout le secteur
+  const playNums  = subArc ? subArc.numbers : CYLINDER[key]
+  const splits    = playNums.map(n => `${n}-plein`)
+  const maxN      = playNums.length
 
   let phase: 'Sniper' | 'Prudent', totalBet: number
   if (confidence >= SIGNAL_THRESHOLDS.KILLER &&
@@ -169,18 +224,14 @@ function getStrategy(key: SectorKey, confidence: number, bankroll: number, profi
     totalBet = profit * BET_RULES.SNIPER_PROFIT
   } else {
     phase    = 'Prudent'
-    const pct = confidence >= 85 ? BET_RULES.PRUDENT_MAX : BET_RULES.PRUDENT_PCT
+    const pct = confidence >= 90 ? BET_RULES.PRUDENT_MAX : BET_RULES.PRUDENT_PCT
     totalBet  = bankroll * pct
   }
 
-  // Always cover the FULL sector — 1€ minimum per position, never trim
-  const bps     = Math.max(1, Math.round(totalBet / maxN))
-  const n       = maxN
-  totalBet      = bps * n
-
-  const splits = allSplits
-  // Tous les numéros joués EN PLEIN (35:1)
-  const potentialGain = bps * 35 - totalBet
+  const bps       = Math.max(1, Math.round(totalBet / maxN))
+  const n         = maxN
+  totalBet        = bps * n
+  const potentialGain = bps * 35 - totalBet   // plein 35:1
 
   return { phase, totalBet, bps, n, splits, potentialGain }
 }
@@ -188,22 +239,22 @@ function getStrategy(key: SectorKey, confidence: number, bankroll: number, profi
 // ── Main ─────────────────────────────────────────────────────
 
 export function processData(
-  spins:         Spin[],
-  bankroll:      number,
+  spins:          Spin[],
+  bankroll:       number,
   initialDeposit: number,
 ): EngineResult {
-  const t0   = performance.now()
+  const t0     = performance.now()
   const profit = bankroll - initialDeposit
 
-  // Minimum spins requis avant tout signal
+  // Minimum spins requis
   if (spins.length < SIGNAL_THRESHOLDS.MIN_SPINS) {
     return _out('WAIT', 0,
       { target:'—', type:'Calibration', splits:[], bet_per_split:0, bet_value:0, num_bets:0 },
-      'En attente du premier numéro', 0, '—',
-      null, null, null, null, performance.now()-t0)
+      `En attente (${spins.length}/${SIGNAL_THRESHOLDS.MIN_SPINS} spins)`,
+      0, '—', null, null, null, null, false, null, performance.now()-t0)
   }
 
-  // Analysis window: use all available spins, max 24
+  // Fenêtre principale : 24 spins max
   const win = spins.slice(-Math.min(24, spins.length))
 
   // 1. Chi-Square filters
@@ -225,7 +276,7 @@ export function processData(
   // 3. Mechanical signature
   const offset = analyzeOffset(spins)
 
-  // 4. Best sector + boost
+  // 4. Best sector + boost offset
   const bestKey = (Object.keys(sectors) as SectorKey[])
     .reduce((a, b) => sectors[a].confidence >= sectors[b].confidence ? a : b)
   const best = sectors[bestKey]
@@ -233,71 +284,84 @@ export function processData(
   if (offset.detected) confidence = Math.min(100, confidence * 1.30)
   confidence = Math.round(confidence * 10) / 10
 
-  // 5. Noise gate — bypassed when Z > 2.5 (sector anomaly takes priority)
+  // 5. C. Double fenêtre — les deux doivent désigner le même secteur
+  const dualSector = dualWindowDominant(spins)
+  const dualWindowConfirmed = dualSector !== null && dualSector === bestKey
+
+  // 6. Noise gate (seuil désactivé à 0 donc quasi-inactif, garde Z>2.5 override)
   if (noise && confidence < SIGNAL_THRESHOLDS.NOISE_GATE && best.Z <= 2.5) {
     return _out('NOISE', confidence,
       { target:'NOISE', type:'—', splits:[], bet_per_split:0, bet_value:0, num_bets:0 },
       `Distributions aléatoires — χ²-col p=${cTest.pValue.toFixed(3)}, χ²-par p=${pTest.pValue.toFixed(3)}`,
-      0, '—', sectors, cTest, pTest, offset, performance.now()-t0)
+      0, '—', sectors, cTest, pTest, offset, dualWindowConfirmed, null, performance.now()-t0)
   }
 
-  // 6. Status
+  // 7. Status
   let status: 'WAIT' | 'PLAY' | 'KILLER'
-  if (confidence >= SIGNAL_THRESHOLDS.KILLER) {
-    status = 'KILLER'
-  } else if (confidence >= SIGNAL_THRESHOLDS.PLAY) {
-    status = 'PLAY'
-  } else {
-    status = 'WAIT'
-  }
-
-  // Plus de force-PLAY permissifs — le seuil PLAY (55%) suffit
+  if      (confidence >= SIGNAL_THRESHOLDS.KILLER) status = 'KILLER'
+  else if (confidence >= SIGNAL_THRESHOLDS.PLAY)   status = 'PLAY'
+  else                                               status = 'WAIT'
 
   if (status === 'WAIT') {
     return _out('WAIT', confidence,
       { target:SECTOR_LABELS[bestKey], type:'Attendre', splits:[], bet_per_split:0, bet_value:0, num_bets:0 },
-      `Signal faible (${confidence}%) — Z=${best.Z.toFixed(2)}σ · attendre renforcement`,
-      0, '—', sectors, cTest, pTest, offset, performance.now()-t0)
+      `Signal ${confidence}% (Z=${best.Z.toFixed(2)}σ) — attendre confirmation${dualWindowConfirmed ? ' ✓ dual-fenêtre' : ''}`,
+      0, '—', sectors, cTest, pTest, offset, dualWindowConfirmed, null, performance.now()-t0)
   }
 
-  // 7. Strategy
-  const strat = getStrategy(bestKey, confidence, bankroll, profit)
+  // 8. D. Sous-arc chaud
+  const subArc = findHotSubArc(win, bestKey)
 
-  // 8. Reason
+  // 9. Strategy — utilise le sous-arc si disponible
+  const strat = getStrategy(bestKey, confidence, bankroll, profit, subArc)
+
+  // 10. Reason
   const parts: string[] = []
-  if (offset.detected) parts.push(`Signature Offset: ${offset.detail}`)
+  if (offset.detected)      parts.push(`Offset: ${offset.detail}`)
+  if (subArc)               parts.push(`Arc ${subArc.numbers.length}num Z=+${subArc.arcZ.toFixed(2)}σ`)
+  if (dualWindowConfirmed)  parts.push(`✓ dual-fenêtre`)
   parts.push(`${SECTOR_LABELS[bestKey]}: Z=+${best.Z.toFixed(2)}σ · Obs=${best.k}/Att=${best.E.toFixed(1)}`)
   if (!cTest.isNoise)  parts.push(`χ²-col p=${cTest.pValue.toFixed(3)}`)
   if (!pTest.isNoise)  parts.push(`χ²-par p=${pTest.pValue.toFixed(3)}`)
 
   return _out(
     status, confidence,
-    { target:SECTOR_LABELS[bestKey], type:strat.phase==='Sniper'?'🎯 Smart Splits SNIPER':'Smart Splits Prudent',
-      splits:strat.splits, bet_per_split:strat.bps, bet_value:strat.totalBet, num_bets:strat.n },
-    parts.join(' + '),
+    { target:SECTOR_LABELS[bestKey],
+      type: strat.phase === 'Sniper' ? '🎯 Smart Pleins SNIPER' : 'Smart Pleins Prudent',
+      splits: strat.splits, bet_per_split: strat.bps, bet_value: strat.totalBet, num_bets: strat.n },
+    parts.join(' · '),
     strat.potentialGain,
     strat.phase,
-    sectors, cTest, pTest, offset, performance.now()-t0
+    sectors, cTest, pTest, offset,
+    dualWindowConfirmed, subArc,
+    performance.now()-t0
   )
 }
 
 function _out(
-  status: EngineResult['status'], confidence: number,
-  recommendation: EngineResult['recommendation'],
-  reason: string, potential_gain: number, phase: EngineResult['phase'],
-  sectors: EngineResult['sectors'], colorTest: EngineResult['colorTest'],
-  parityTest: EngineResult['parityTest'], offsetAnalysis: EngineResult['offsetAnalysis'],
-  latency: number
+  status:              EngineResult['status'],
+  confidence:          number,
+  recommendation:      EngineResult['recommendation'],
+  reason:              string,
+  potential_gain:      number,
+  phase:               EngineResult['phase'],
+  sectors:             EngineResult['sectors'],
+  colorTest:           EngineResult['colorTest'],
+  parityTest:          EngineResult['parityTest'],
+  offsetAnalysis:      EngineResult['offsetAnalysis'],
+  dualWindowConfirmed: boolean,
+  subArc:              SubArcResult | null,
+  latency:             number,
 ): EngineResult {
   return {
     status, confidence, recommendation, reason, potential_gain, phase,
     sectors, colorTest, parityTest, offsetAnalysis,
+    dualWindowConfirmed, subArc,
     latency: Math.round(latency * 100) / 100,
   }
 }
 
 // ── Per-number heat (for heatmap) ────────────────────────────
-/** Returns a Z-score-like heat value for each number in [0,36] */
 export function computeNumberHeat(spins: Spin[]): Record<number, number> {
   const win = spins.slice(-Math.min(24, Math.max(18, spins.length)))
   const counts: Record<number, number> = {}

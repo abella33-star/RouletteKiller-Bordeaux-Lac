@@ -1,46 +1,41 @@
 'use strict';
 // ============================================================
-//  BORDEAUX ALPHA-PREDATOR ENGINE — Worker Thread
-//  Détection d'anomalies mécaniques et statistiques en temps réel
-//  Latence cible < 50 ms  ·  Aucune dépendance externe
+//  BORDEAUX ALPHA-PREDATOR ENGINE v2 — Worker Thread
+//  Miroir de lib/alpha-engine.ts en plain JS
+//  v2: λ=0.75, normalCDF confidence, dual-fenêtre, sous-arc chaud
 // ============================================================
 
-// ───────────────────────────────────────────────────────────────
-//  CYLINDRE EUROPÉEN (ordre physique Alfastreet)
-// ───────────────────────────────────────────────────────────────
 const WHEEL_ORDER = [0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];
-const WHEEL_POS   = {};   // number → position index on wheel
+const WHEEL_POS   = {};
 WHEEL_ORDER.forEach((n, i) => { WHEEL_POS[n] = i; });
 
 const CYLINDER = {
-  voisins:   [22,18,29,7,28,12,35,3,26,0,32,15,19,4,21,2,25],  // 17
+  voisins:   [22,18,29,7,28,12,35,3,26,0,32,15,19,4,21,2,25],  // 17 — ordre physique cylindre
   tiers:     [27,13,36,11,30,8,23,10,5,24,16,33],               // 12
-  orphelins: [1,20,14,31,9,17,34,6]                              //  8
+  orphelins: [1,20,14,31,9,17,34,6],                            //  8
 };
 const SECTOR_LABELS = {
   voisins:   'Voisins du Zéro',
   tiers:     'Tiers du Cylindre',
-  orphelins: 'Orphelins'
+  orphelins: 'Orphelins',
 };
 
-// Smart PLEINS par secteur — tous les numéros joués en plein (35:1)
-// Voisins  : 17 numéros | Tiers : 12 numéros | Orphelins : 8 numéros
-const SMART_SPLITS = {
-  voisins:   { splits: [], pleins: [22,18,29,7,28,12,35,3,26,0,32,15,19,4,21,2,25] },
-  tiers:     { splits: [], pleins: [27,13,36,11,30,8,23,10,5,24,16,33] },
-  orphelins: { splits: [], pleins: [1,20,14,31,9,17,34,6] },
+// D. Tailles d'arc pour détection sous-arc chaud
+const SUB_ARC_SIZES = {
+  voisins:   { min: 5, max: 9 },
+  tiers:     { min: 4, max: 7 },
+  orphelins: { min: 3, max: 5 },
 };
 
-const MIN_SPINS = 10;   // N minimum avant tout signal
+const MIN_SPINS       = 10;
+const THRESHOLD_PLAY  = 84;   // normalCDF(1.0)×100 — Z ≥ 1.0σ
+const THRESHOLD_KILLER= 97;   // normalCDF(2.0)×100 — Z ≥ 2.0σ
 
 const RED_NUMBERS  = [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36];
 const EVEN_NUMBERS = [2,4,6,8,10,12,14,16,18,20,22,24,26,28,30,32,34,36];
 
-// ───────────────────────────────────────────────────────────────
-//  MATH
-// ───────────────────────────────────────────────────────────────
+// ── Math ────────────────────────────────────────────────────
 
-/** Normal CDF Φ(z) — Abramowitz & Stegun 26.2.17, error < 7.5×10⁻⁸ */
 function normalCDF(z) {
   if (z < -8) return 0;
   if (z >  8) return 1;
@@ -51,21 +46,18 @@ function normalCDF(z) {
   return z >= 0 ? p : 1 - p;
 }
 
-/** Chi-square p-value P(χ²(df) ≥ x) */
 function chiSqPValue(chi2, df) {
   if (chi2 <= 0) return 1;
   if (df === 1) return 2 * (1 - normalCDF(Math.sqrt(chi2)));
-  if (df === 2) return Math.exp(-chi2 / 2);                  // exact
-  const z  = Math.pow(chi2 / df, 1 / 3) - (1 - 2 / (9 * df));
-  return 1 - normalCDF(z / Math.sqrt(2 / (9 * df)));
+  if (df === 2) return Math.exp(-chi2 / 2);
+  const z = Math.pow(chi2 / df, 1/3) - (1 - 2/(9*df));
+  return 1 - normalCDF(z / Math.sqrt(2/(9*df)));
 }
 
-// ───────────────────────────────────────────────────────────────
-//  SECTOR STATISTICS (same kernel as Bordeaux engine)
-// ───────────────────────────────────────────────────────────────
+// ── Statistics ───────────────────────────────────────────────
 
-// Exponential decay weighting: most recent spin = weight 1, older = ×λ each step
-const RECENCY_LAMBDA = 0.3;
+// A. λ=0.75 → nEff ≈ 4.0 spins effectifs (était 1.4 avec λ=0.3)
+const RECENCY_LAMBDA = 0.75;
 
 function zScore(win, nums) {
   const n = win.length;
@@ -94,18 +86,15 @@ function bayesianPosterior(win, nums, m = 4) {
   return (kEff + p * m) / (nEff + m);
 }
 
-/** Composite confidence score [0–100] for a sector */
+// B. Probabilité unilatérale exacte : normalCDF(Z) × 100
 function sectorConfidence(win, nums) {
   if (win.length < 1) return 0;
   const Z = zScore(win, nums);
   if (Z <= 0) return 0;
-  // Ultra-sensitivity + recency bias: réagit dès le dernier numéro saisi
-  return Math.min(100, Math.max(0, Z * 40));
+  return Math.round(normalCDF(Z) * 1000) / 10;
 }
 
-// ───────────────────────────────────────────────────────────────
-//  CHI-SQUARE FILTERS  (Rouge/Noir/Vert  +  Pair/Impair)
-// ───────────────────────────────────────────────────────────────
+// ── Chi-Square ───────────────────────────────────────────────
 
 function colorChiSquare(win) {
   const n = win.length;
@@ -113,156 +102,153 @@ function colorChiSquare(win) {
   const r = win.filter(s => RED_NUMBERS.includes(s.number)).length;
   const v = win.filter(s => s.number === 0).length;
   const b = n - r - v;
-  const Er = n * 18 / 37, Eb = n * 18 / 37, Ev = n / 37;
-  const chi2 = (r - Er) ** 2 / Er + (b - Eb) ** 2 / Eb + (v - Ev) ** 2 / Ev;
-  const pValue = chiSqPValue(chi2, 2);    // df=2 → exact: exp(−χ²/2)
+  const Er = n*18/37, Eb = n*18/37, Ev = n/37;
+  const chi2 = (r-Er)**2/Er + (b-Eb)**2/Eb + (v-Ev)**2/Ev;
+  const pValue = chiSqPValue(chi2, 2);
   return { chi2, pValue, isNoise: pValue > 0.05 };
 }
 
 function parityChiSquare(win) {
-  const n    = win.length;
+  const n = win.length;
   if (n < 3) return { chi2: 0, pValue: 0.5, isNoise: false };
   const even = win.filter(s => s.number > 0 && EVEN_NUMBERS.includes(s.number)).length;
   const odd  = win.filter(s => s.number > 0 && !EVEN_NUMBERS.includes(s.number)).length;
-  const nz   = even + odd;
-  if (nz < 2) return { chi2: 0, pValue: 0.5, isNoise: false };
-  const Ep   = nz / 2;
-  const chi2 = (even - Ep) ** 2 / Ep + (odd - Ep) ** 2 / Ep;
+  const nz = even + odd;
+  if (nz < 5) return { chi2: 0, pValue: 1, isNoise: true };
+  const Ep = nz / 2;
+  const chi2 = (even-Ep)**2/Ep + (odd-Ep)**2/Ep;
   const pValue = chiSqPValue(chi2, 1);
   return { chi2, pValue, isNoise: pValue > 0.05 };
 }
 
-// ───────────────────────────────────────────────────────────────
-//  MECHANICAL SIGNATURE — Offset Cluster
-//  Offset = distance (wheel positions) between starting_point and result
-//  Auto-derived as previous spin's number when not provided explicitly.
-//  Cluster detected when ≥3 offsets fall within ±2 positions (wrapping)
-// ───────────────────────────────────────────────────────────────
+// ── Mechanical Signature ─────────────────────────────────────
 
-function analyzeOffset(spins, lookback = 10) {
+function analyzeOffset(spins) {
   const NONE = { detected: false, boost: 0, center: null, count: 0, total: 0, detail: null };
-
-  // Enrich spins: auto-set starting_point from previous spin if absent
   const enriched = spins.map((s, i) => ({
     ...s,
-    starting_point: s.starting_point != null ? s.starting_point : (i > 0 ? spins[i - 1].number : null)
+    starting_point: s.starting_point != null ? s.starting_point : (i > 0 ? spins[i-1].number : null),
   }));
-
   const valid = enriched.filter(s =>
     s.starting_point != null &&
     WHEEL_POS[s.starting_point] !== undefined &&
     WHEEL_POS[s.number] !== undefined
   );
-  const recent = valid.slice(-lookback);
+  const recent = valid.slice(-10);
   if (recent.length < 3) return NONE;
 
-  // Bidirectional: cylinder rotates CW, ball CCW — take minimum physical distance
-  const DAMPING = 1;          // ±1 pocket glissement on Alfastreet carpet
-  const CLUSTER_TOL = 2 + DAMPING;  // = 3 positions tolerance
-
+  const CLUSTER_TOL = 3;
   const offsets = recent.map(s => {
     const sp = WHEEL_POS[s.starting_point];
     const rp = WHEEL_POS[s.number];
-    const cw  = (rp - sp + 37) % 37;
+    const cw = (rp - sp + 37) % 37;
     const ccw = (sp - rp + 37) % 37;
     return Math.min(cw, ccw);
   });
 
-  // Scan for best cluster center with ±CLUSTER_TOL tolerance (circular wrap)
   let best = { center: -1, count: 0 };
   for (let c = 0; c < 37; c++) {
-    const cnt = offsets.filter(o => {
-      const d = Math.abs(o - c);
-      return Math.min(d, 37 - d) <= CLUSTER_TOL;
-    }).length;
+    const cnt = offsets.filter(o => Math.min(Math.abs(o-c), 37-Math.abs(o-c)) <= CLUSTER_TOL).length;
     if (cnt > best.count) best = { center: c, count: cnt };
   }
-
   const detected = best.count >= 3;
   return {
     detected,
     boost:  detected ? 30 : 0,
-    center: best.center,
+    center: best.center >= 0 ? best.center : null,
     count:  best.count,
     total:  recent.length,
-    detail: detected
-      ? `Offset ~${best.center} cases (${best.count}/${recent.length} répétitions)`
-      : null
+    detail: detected ? `Offset ~${best.center} cases (${best.count}/${recent.length} rép.)` : null,
   };
 }
 
-// ───────────────────────────────────────────────────────────────
-//  EXECUTION STRATEGY — Fractional Kelly + Smart Splits
-// ───────────────────────────────────────────────────────────────
+// ── C. Double fenêtre de confirmation ─────────────────────────
 
-function formatSplits(sectorKey) {
-  const s = SMART_SPLITS[sectorKey];
-  const parts = s.splits.map(([a, b]) => `${a}/${b}`);
-  s.pleins.forEach(n => parts.push(`${n}-plein`));
-  return parts;
+function dualWindowDominant(spins) {
+  const winShort = spins.slice(-8);
+  const winLong  = spins.slice(-Math.min(24, spins.length));
+  if (winShort.length < 4) return null;
+
+  const keys = ['voisins', 'tiers', 'orphelins'];
+  const dominantIn = (win) =>
+    keys.reduce((best, k) =>
+      zScore(win, CYLINDER[k]) > zScore(win, CYLINDER[best]) ? k : best
+    , keys[0]);
+
+  const shortDom = dominantIn(winShort);
+  const longDom  = dominantIn(winLong);
+  return shortDom === longDom ? shortDom : null;
 }
 
-function numBets(sectorKey) {
-  const s = SMART_SPLITS[sectorKey];
-  return s.splits.length + s.pleins.length;
+// ── D. Sous-arc chaud ────────────────────────────────────────
+
+function findHotSubArc(win, sectorKey) {
+  const nums = CYLINDER[sectorKey];
+  const { min, max } = SUB_ARC_SIZES[sectorKey];
+  const n = nums.length;
+  let bestZ = 0, bestArc = [];
+
+  for (let arcLen = min; arcLen <= max; arcLen++) {
+    for (let start = 0; start < n; start++) {
+      const arc = [];
+      for (let j = 0; j < arcLen; j++) arc.push(nums[(start + j) % n]);
+      const z = zScore(win, arc);
+      if (z > bestZ) { bestZ = z; bestArc = arc.slice(); }
+    }
+  }
+
+  if (bestZ <= 0 || bestArc.length === 0) return null;
+  return {
+    numbers:       bestArc,
+    arcZ:          Math.round(bestZ * 1000) / 1000,
+    arcConfidence: Math.round(normalCDF(bestZ) * 1000) / 10,
+  };
 }
 
-/**
- * getExecutionStrategy(bankroll, profit, signalScore, bestSector)
- *  Phase 1 (Safe)       — profit < 50€  : 1-2 % bankroll / numBets
- *  Phase 2 (Aggressive) — profit ≥ 50€ & score > 85% : 50 % profit / numBets
- */
-function getExecutionStrategy(bankroll, profit, signalScore, bestSector) {
-  const allSplits = formatSplits(bestSector);
-  const maxN      = numBets(bestSector);
+// ── Strategy ─────────────────────────────────────────────────
+
+function getExecutionStrategy(bankroll, profit, confidence, bestSector, subArc) {
+  const playNums = subArc ? subArc.numbers : CYLINDER[bestSector];
+  const splits   = playNums.map(n => `${n}-plein`);
+  const maxN     = playNums.length;
 
   let phase, totalBet;
-  if (profit >= 50 && signalScore > 85) {
+  if (confidence >= THRESHOLD_KILLER && profit >= 50) {
     phase    = 'Sniper';
     totalBet = profit * 0.50;
   } else {
     phase    = 'Prudent';
-    const pct = signalScore >= 85 ? 0.02 : 0.01;
+    const pct = confidence >= 90 ? 0.02 : 0.01;
     totalBet  = bankroll * pct;
   }
 
-  // Always cover the FULL sector — 1€ minimum per position, never trim
   const betPerSplit = Math.max(1, Math.round(totalBet / maxN));
   const n           = maxN;
   totalBet          = betPerSplit * n;
-
-  const splits = allSplits;
-  // Tous les numéros en plein (35:1)
-  const potentialGain = betPerSplit * 35 - totalBet;
+  const potentialGain = betPerSplit * 35 - totalBet;  // plein 35:1
 
   return { phase, totalBet, betPerSplit, numBets: n, splits, potentialGain };
 }
 
-// ───────────────────────────────────────────────────────────────
-//  MAIN ENGINE  processData()
-// ───────────────────────────────────────────────────────────────
+// ── Main engine ───────────────────────────────────────────────
 
 function processData(history, bankroll, initialDeposit, profit) {
   const t0 = performance.now();
 
-  // ── Insufficient data ─────────────────────────────────────────
   if (history.length < MIN_SPINS) {
     return _out('WAIT', 0,
-      { target: '—', type: 'Calibration', splits: [], bet_per_split: 0, bet_value: 0, num_bets: 0 },
-      'En attente du premier numéro', 0, '—',
-      null, null, null, performance.now() - t0
+      { target:'—', type:'Calibration', splits:[], bet_per_split:0, bet_value:0, num_bets:0 },
+      `En attente (${history.length}/${MIN_SPINS} spins)`,
+      0, '—', null, null, null, null, false, null, performance.now()-t0
     );
   }
 
-  // Analysis window: use all available spins, max 24
   const win = history.slice(-Math.min(24, history.length));
 
-  // ── 1. Chi-Square: colour + parity ─────────────────────────
   const cTest = colorChiSquare(win);
   const pTest = parityChiSquare(win);
   const noiseGlobal = cTest.isNoise && pTest.isNoise;
 
-  // ── 2. Sector scoring ──────────────────────────────────────
   const sectorData = {};
   for (const [key, nums] of Object.entries(CYLINDER)) {
     const Z    = zScore(win, nums);
@@ -273,77 +259,73 @@ function processData(history, bankroll, initialDeposit, profit) {
     sectorData[key] = { Z, posterior: post, confidence: conf, k, E };
   }
 
-  // ── 3. Mechanical Signature ─────────────────────────────────
-  const offset = analyzeOffset(history);   // use full buffer for offset
+  const offset = analyzeOffset(history);
 
-  // ── 4. Best sector + confidence boost ──────────────────────
   const bestKey = Object.entries(sectorData)
     .reduce((a, b) => a[1].confidence >= b[1].confidence ? a : b)[0];
   const best = sectorData[bestKey];
   let confidence = best.confidence;
   if (offset.detected) confidence = Math.min(100, confidence * 1.30);
+  confidence = Math.round(confidence * 10) / 10;
 
-  // ── 5. Noise gate — désactivé, toujours afficher le secteur dominant
+  // C. Double fenêtre
+  const dualSector = dualWindowDominant(history);
+  const dualWindowConfirmed = dualSector !== null && dualSector === bestKey;
+
+  // Noise gate (désactivé à seuil 0)
   if (noiseGlobal && confidence < 0 && best.Z <= 2.5) {
     return _out('NOISE', confidence,
-      { target: 'NOISE', type: '—', splits: [], bet_per_split: 0, bet_value: 0, num_bets: 0 },
-      `Distributions aléatoires — χ²-col p=${cTest.pValue.toFixed(3)}, χ²-par p=${pTest.pValue.toFixed(3)}`,
-      0, '—', sectorData, cTest, pTest, offset, performance.now() - t0
+      { target:'NOISE', type:'—', splits:[], bet_per_split:0, bet_value:0, num_bets:0 },
+      `Distributions aléatoires χ²-col p=${cTest.pValue.toFixed(3)}, χ²-par p=${pTest.pValue.toFixed(3)}`,
+      0, '—', sectorData, cTest, pTest, offset, dualWindowConfirmed, null, performance.now()-t0
     );
   }
 
-  // ── 5b. Status par seuil strict ────────────────────────────
   let status;
-  if      (confidence >= 93) status = 'KILLER';
-  else if (confidence >= 55) status = 'PLAY';
-  else                        status = 'WAIT';
+  if      (confidence >= THRESHOLD_KILLER) status = 'KILLER';
+  else if (confidence >= THRESHOLD_PLAY)   status = 'PLAY';
+  else                                      status = 'WAIT';
 
   if (status === 'WAIT') {
-    return _out('WAIT', Math.round(confidence * 10) / 10,
-      { target: SECTOR_LABELS[bestKey], type: 'Attendre', splits: [], bet_per_split: 0, bet_value: 0, num_bets: 0 },
-      `Signal faible (${confidence.toFixed(1)}%) — Z=${best.Z.toFixed(2)}σ · attendre renforcement`,
-      0, '—', sectorData, cTest, pTest, offset, performance.now() - t0
+    return _out('WAIT', confidence,
+      { target: SECTOR_LABELS[bestKey], type:'Attendre', splits:[], bet_per_split:0, bet_value:0, num_bets:0 },
+      `Signal ${confidence}% (Z=${best.Z.toFixed(2)}σ) — attendre confirmation${dualWindowConfirmed ? ' ✓ dual' : ''}`,
+      0, '—', sectorData, cTest, pTest, offset, dualWindowConfirmed, null, performance.now()-t0
     );
   }
 
-  // ── 6. Execution strategy ────────────────────────────────────
-  const strat = getExecutionStrategy(bankroll, profit, confidence, bestKey);
-  const target = SECTOR_LABELS[bestKey];
+  // D. Sous-arc chaud
+  const subArc = findHotSubArc(win, bestKey);
 
-  // ── 7. Reason ────────────────────────────────────────────────
+  const strat = getExecutionStrategy(bankroll, profit, confidence, bestKey, subArc);
+
   const parts = [];
-  if (offset.detected) parts.push(`Signature Offset: ${offset.detail}`);
-  parts.push(`${target}: Z=+${best.Z.toFixed(2)}σ · Obs=${best.k}/Att=${best.E.toFixed(1)}`);
-  if (!cTest.isNoise)  parts.push(`Signal couleurs p=${cTest.pValue.toFixed(3)}`);
-  if (!pTest.isNoise)  parts.push(`Signal parité p=${pTest.pValue.toFixed(3)}`);
-  const reason = parts.join(' + ');
+  if (offset.detected)     parts.push(`Offset: ${offset.detail}`);
+  if (subArc)              parts.push(`Arc ${subArc.numbers.length}num Z=+${subArc.arcZ.toFixed(2)}σ`);
+  if (dualWindowConfirmed) parts.push(`✓ dual-fenêtre`);
+  parts.push(`${SECTOR_LABELS[bestKey]}: Z=+${best.Z.toFixed(2)}σ · Obs=${best.k}/Att=${best.E.toFixed(1)}`);
+  if (!cTest.isNoise) parts.push(`χ²-col p=${cTest.pValue.toFixed(3)}`);
+  if (!pTest.isNoise) parts.push(`χ²-par p=${pTest.pValue.toFixed(3)}`);
 
-  // status already set above (with early anomaly override)
-  const type = strat.phase === 'Sniper'
-    ? '🎯 Smart Splits SNIPER'
-    : `Smart Splits Prudent`;
+  const type = strat.phase === 'Sniper' ? '🎯 Smart Pleins SNIPER' : 'Smart Pleins Prudent';
 
   return _out(
-    status,
-    Math.round(confidence * 10) / 10,
-    {
-      target,
-      type,
-      splits:        strat.splits,
-      bet_per_split: strat.betPerSplit,
-      bet_value:     strat.totalBet,
-      num_bets:      strat.numBets
-    },
-    reason,
+    status, confidence,
+    { target: SECTOR_LABELS[bestKey], type,
+      splits: strat.splits, bet_per_split: strat.betPerSplit,
+      bet_value: strat.totalBet, num_bets: strat.numBets },
+    parts.join(' · '),
     strat.potentialGain,
     strat.phase,
     sectorData, cTest, pTest, offset,
-    performance.now() - t0
+    dualWindowConfirmed, subArc,
+    performance.now()-t0
   );
 }
 
 function _out(status, confidence, recommendation, reason, potential_gain, phase,
-              sectors, colorTest, parityTest, offsetAnalysis, latency) {
+              sectors, colorTest, parityTest, offsetAnalysis,
+              dualWindowConfirmed, subArc, latency) {
   return {
     status,
     confidence: Math.round((confidence || 0) * 10) / 10,
@@ -355,13 +337,13 @@ function _out(status, confidence, recommendation, reason, potential_gain, phase,
     colorTest,
     parityTest,
     offsetAnalysis,
-    latency: Math.round((latency || 0) * 100) / 100
+    dualWindowConfirmed: dualWindowConfirmed || false,
+    subArc: subArc || null,
+    latency: Math.round((latency || 0) * 100) / 100,
   };
 }
 
-// ───────────────────────────────────────────────────────────────
-//  WORKER INTERFACE
-// ───────────────────────────────────────────────────────────────
+// ── Worker Interface ─────────────────────────────────────────
 self.onmessage = function (e) {
   const { id, history, bankroll, initialDeposit, profit } = e.data;
   const result = processData(history, bankroll, initialDeposit, profit);

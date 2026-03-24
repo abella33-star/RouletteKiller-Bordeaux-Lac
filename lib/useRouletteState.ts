@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback, useRef } from 'react'
-import type { AppState, Spin, EngineResult } from './types'
+import type { AppState, Spin, EngineResult, SectorKey } from './types'
 import { getColor, getZone, TAKE_PROFIT_MULTIPLIER } from './constants'
 import { processData, computeNumberHeat } from './alpha-engine'
 import { saveState, loadState } from './indexeddb'
@@ -21,16 +21,18 @@ function isNumberCovered(number: number, splits: string[]): boolean {
 
 // ── Default state ──────────────────────────────────────────────
 const DEFAULT: AppState = {
-  spins:           [],
-  bankroll:        100,
-  initialDeposit:  100,
-  startBankroll:   100,
-  wins:            0,
-  losses:          0,
-  totalSpins:      0,
-  consecutiveLoss: 0,
-  victoryShown:    false,
-  lastEngineResult: null,
+  spins:             [],
+  bankroll:          100,
+  initialDeposit:    100,
+  startBankroll:     100,
+  wins:              0,
+  losses:            0,
+  totalSpins:        0,
+  consecutiveLoss:   0,
+  victoryShown:      false,
+  lastEngineResult:  null,
+  sectorStreak:      0,
+  lastSignalSector:  null,
 }
 
 export function useRouletteState() {
@@ -102,10 +104,36 @@ export function useRouletteState() {
       const profit = bankroll - initialDeposit
       workerRef.current.postMessage({ id, history, bankroll, initialDeposit, profit })
       promise.then(result => {
-        // Discard stale results: only apply if this is still the latest request
         if (id < latestIdRef.current) return
-        setState(prev => ({ ...prev, lastEngineResult: result }))
-        // Haptic for signal change
+
+        setState(prev => {
+          // E. Streak tracking — même secteur dominant consécutivement
+          const incomingSector = result.sectors
+            ? (Object.keys(result.sectors) as SectorKey[])
+                .reduce((a, b) => result.sectors![a].confidence >= result.sectors![b].confidence ? a : b)
+            : null
+
+          const isActive = result.status === 'PLAY' || result.status === 'KILLER'
+          const newStreak = (isActive && incomingSector && prev.lastSignalSector === incomingSector)
+            ? prev.sectorStreak + 1
+            : 0
+          const newLastSector: SectorKey | null = isActive ? incomingSector : null
+
+          // Gate PLAY : exiger streak≥2 OU dual-fenêtre confirmée — KILLER bypass toujours
+          const gatedResult: EngineResult = (
+            result.status === 'PLAY' &&
+            newStreak < 2 &&
+            !result.dualWindowConfirmed
+          ) ? { ...result, status: 'WAIT' } : result
+
+          return {
+            ...prev,
+            lastEngineResult: gatedResult,
+            sectorStreak:     newStreak,
+            lastSignalSector: newLastSector,
+          }
+        })
+
         if      (result.status === 'KILLER') haptics.killer()
         else if (result.status === 'PLAY')   haptics.play()
         else if (result.status === 'NOISE')  haptics.noise()
@@ -197,10 +225,12 @@ export function useRouletteState() {
     pendingRef.current.clear()
     setState(prev => ({
       ...prev,
-      spins:           [],
-      totalSpins:      0,
-      consecutiveLoss: 0,
+      spins:            [],
+      totalSpins:       0,
+      consecutiveLoss:  0,
       lastEngineResult: null,
+      sectorStreak:     0,
+      lastSignalSector: null,
     }))
     setHeat({})
     setBufferSize(0)

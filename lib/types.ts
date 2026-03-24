@@ -50,32 +50,42 @@ export interface SmartSplitRecommendation {
   num_bets:     number
 }
 
+export interface SubArcResult {
+  numbers:       number[]   // numéros consécutifs du cylindre dans l'arc chaud
+  arcZ:          number     // Z-score de cet arc
+  arcConfidence: number     // normalCDF(arcZ) × 100
+}
+
 export interface EngineResult {
-  status:         SignalStatus
-  confidence:     number
-  recommendation: SmartSplitRecommendation
-  reason:         string
-  potential_gain: number
-  phase:          Phase
-  sectors:        Record<SectorKey, SectorData> | null
-  colorTest:      ChiSquareResult | null
-  parityTest:     ChiSquareResult | null
-  offsetAnalysis: OffsetAnalysis | null
-  latency:        number
+  status:               SignalStatus
+  confidence:           number
+  recommendation:       SmartSplitRecommendation
+  reason:               string
+  potential_gain:       number
+  phase:                Phase
+  sectors:              Record<SectorKey, SectorData> | null
+  colorTest:            ChiSquareResult | null
+  parityTest:           ChiSquareResult | null
+  offsetAnalysis:       OffsetAnalysis | null
+  latency:              number
+  dualWindowConfirmed:  boolean        // les 2 fenêtres (8 et 24 spins) désignent le même secteur
+  subArc:               SubArcResult | null  // arc chaud détecté (null si WAIT/NOISE)
 }
 
 // ── App State ────────────────────────────────────────────────
 export interface AppState {
-  spins:            Spin[]
-  bankroll:         number
-  initialDeposit:   number
-  startBankroll:    number
-  wins:             number
-  losses:           number
-  totalSpins:       number
-  consecutiveLoss:  number
-  victoryShown:     boolean
-  lastEngineResult: EngineResult | null
+  spins:             Spin[]
+  bankroll:          number
+  initialDeposit:    number
+  startBankroll:     number
+  wins:              number
+  losses:            number
+  totalSpins:        number
+  consecutiveLoss:   number
+  victoryShown:      boolean
+  lastEngineResult:  EngineResult | null
+  sectorStreak:      number           // nb d'analyses consécutives sur le même secteur
+  lastSignalSector:  SectorKey | null // secteur dominant de la dernière analyse
 }
 
 // ── IndexedDB ────────────────────────────────────────────────

@@ -60,11 +60,18 @@ export function getZone(n: number): SectorKey | null {
 
 // ── Signal thresholds ────────────────────────────────────────
 export const SIGNAL_THRESHOLDS = {
-  KILLER:     93,  // ≥93% → KILLER (Z ≥ 2.33σ — anomalie forte)
-  PLAY:       55,  // ≥55% → PLAY  (Z ≥ 1.38σ — tendance claire)
+  KILLER:     97,  // normalCDF(2.0)×100 → Z ≥ 2.0σ (anomalie forte)
+  PLAY:       84,  // normalCDF(1.0)×100 → Z ≥ 1.0σ (tendance claire)
   MIN_SPINS:  10,  // N minimum avant tout signal
-  NOISE_GATE:  0,  // désactivé — afficher secteur dominant
+  NOISE_GATE:  0,  // désactivé
 } as const
+
+// ── Tailles d'arc (sous-arc chaud sur cylindre physique) ─────
+export const SUB_ARC_SIZES: Record<SectorKey, { min: number; max: number }> = {
+  voisins:   { min: 5, max: 9 },  // secteur 17 → arc 5-9 pleins
+  tiers:     { min: 4, max: 7 },  // secteur 12 → arc 4-7 pleins
+  orphelins: { min: 3, max: 5 },  // secteur  8 → arc 3-5 pleins
+}
 
 // ── Bet rules ────────────────────────────────────────────────
 export const BET_RULES = {
