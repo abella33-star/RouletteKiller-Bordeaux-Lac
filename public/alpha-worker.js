@@ -23,15 +23,15 @@ const SECTOR_LABELS = {
   orphelins: 'Orphelins'
 };
 
-// Smart Splits per sector (chevals + pleins)
-// Voisins: 9 jetons — 0/2/3 (×2), 4/7, 12/15, 18/21, 19/22, carré 25/26/28/29 (×2), 32/35
-// Tiers: 6 jetons — 5/8, 10/11, 13/16, 23/24, 27/30, 33/36
-// Orphelins: 5 jetons — 1-plein, 6/9, 14/17, 17/20, 31/34
+// Smart PLEINS par secteur — tous les numéros joués en plein (35:1)
+// Voisins  : 17 numéros | Tiers : 12 numéros | Orphelins : 8 numéros
 const SMART_SPLITS = {
-  voisins:   { splits: [[0,3],[0,2],[4,7],[12,15],[18,21],[19,22],[25,28],[26,29],[32,35]], pleins: [] },
-  tiers:     { splits: [[5,8],[10,11],[13,16],[23,24],[27,30],[33,36]], pleins: [] },
-  orphelins: { splits: [[6,9],[14,17],[17,20],[31,34]], pleins: [1] }
+  voisins:   { splits: [], pleins: [22,18,29,7,28,12,35,3,26,0,32,15,19,4,21,2,25] },
+  tiers:     { splits: [], pleins: [27,13,36,11,30,8,23,10,5,24,16,33] },
+  orphelins: { splits: [], pleins: [1,20,14,31,9,17,34,6] },
 };
+
+const MIN_SPINS = 10;   // N minimum avant tout signal
 
 const RED_NUMBERS  = [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36];
 const EVEN_NUMBERS = [2,4,6,8,10,12,14,16,18,20,22,24,26,28,30,32,34,36];
@@ -231,14 +231,9 @@ function getExecutionStrategy(bankroll, profit, signalScore, bestSector) {
   const n           = maxN;
   totalBet          = betPerSplit * n;
 
-  const splits    = allSplits;
-  const nSplits   = SMART_SPLITS[bestSector].splits.length;
-
-  // Split paye 17:1 → gain net = mise_pos × 17 − mise_totale
-  // Plein paye 35:1 → gain net = mise_pos × 35 − mise_totale
-  const potentialGain = nSplits > 0
-    ? betPerSplit * 17 - totalBet
-    : betPerSplit * 35 - totalBet;
+  const splits = allSplits;
+  // Tous les numéros en plein (35:1)
+  const potentialGain = betPerSplit * 35 - totalBet;
 
   return { phase, totalBet, betPerSplit, numBets: n, splits, potentialGain };
 }
@@ -250,9 +245,8 @@ function getExecutionStrategy(bankroll, profit, signalScore, bestSector) {
 function processData(history, bankroll, initialDeposit, profit) {
   const t0 = performance.now();
 
-  // Circuit Breaker: signal flagged externally (passed as isExpired flag)
   // ── Insufficient data ─────────────────────────────────────────
-  if (history.length < 1) {
+  if (history.length < MIN_SPINS) {
     return _out('WAIT', 0,
       { target: '—', type: 'Calibration', splits: [], bet_per_split: 0, bet_value: 0, num_bets: 0 },
       'En attente du premier numéro', 0, '—',
@@ -298,22 +292,11 @@ function processData(history, bankroll, initialDeposit, profit) {
     );
   }
 
-  // ── 5b. Early anomaly: Z>0.1 → force PLAY (moindre avance suffit)
+  // ── 5b. Status par seuil strict ────────────────────────────
   let status;
-  if (confidence >= 90) status = 'KILLER';
-  else if (confidence >= 5) status = 'PLAY';
-  else status = 'WAIT';
-
-  if (best.Z > 0.1 && status === 'WAIT') {
-    status = 'PLAY';
-    confidence = Math.max(confidence, 10);
-  }
-
-  // Force PLAY dès 2 numéros — jamais de Smart Splits vide
-  if (win.length >= 2 && status === 'WAIT') {
-    status = 'PLAY';
-    confidence = Math.max(confidence, 5);
-  }
+  if      (confidence >= 93) status = 'KILLER';
+  else if (confidence >= 55) status = 'PLAY';
+  else                        status = 'WAIT';
 
   if (status === 'WAIT') {
     return _out('WAIT', Math.round(confidence * 10) / 10,

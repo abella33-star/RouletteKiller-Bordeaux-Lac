@@ -25,19 +25,20 @@ function getSectorKey(target: string): SectorKey | null {
 
 /**
  * Génère les chips de mise EXCLUSIVEMENT depuis le secteur détecté.
- * Aucune valeur par défaut — si key=null → tableau vide.
+ * Tous les numéros joués EN PLEIN (35:1) — aucun split.
+ * Ordre : séquence physique du cylindre.
  */
 function getSplitsForSector(key: SectorKey | null): string[] {
   switch (key) {
     case 'voisins':
-      // 9 jetons : 0/2/3 (×2), 4/7, 12/15, 18/21, 19/22, 25/26/28/29 (×2), 32/35
-      return ['0/3','0/2','4/7','12/15','18/21','19/22','25/28','26/29','32/35']
+      // 17 pleins — séquence cylindre
+      return [22,18,29,7,28,12,35,3,26,0,32,15,19,4,21,2,25].map(n => `${n}-plein`)
     case 'tiers':
-      // 6 jetons : 5/8, 10/11, 13/16, 23/24, 27/30, 33/36
-      return ['5/8','10/11','13/16','23/24','27/30','33/36']
+      // 12 pleins
+      return [27,13,36,11,30,8,23,10,5,24,16,33].map(n => `${n}-plein`)
     case 'orphelins':
-      // 5 jetons : 6/9, 14/17, 17/20, 31/34, 1-plein
-      return ['6/9','14/17','17/20','31/34','1-plein']
+      // 8 pleins
+      return [1,20,14,31,9,17,34,6].map(n => `${n}-plein`)
     default:
       return []
   }
@@ -60,11 +61,9 @@ export default function BetCard({ result, bankroll, profit }: Props) {
   const betPerSplit = rec?.bet_per_split ?? 0
   const numBets     = rec?.num_bets     ?? 0
 
-  // Gain net réel : split=17:1, plein=35:1 — formule : (mise_pos × ratio) − mise_totale
+  // Gain net réel : tous en plein (35:1) → mise_pos × 35 − mise_totale
   const potGain = betPerSplit > 0 && betValue > 0
-    ? (splits.some(s => s.includes('plein'))
-        ? Math.max(betPerSplit * 17 - betValue, betPerSplit * 35 - betValue)  // orphelins: affiche le max (plein)
-        : betPerSplit * 17 - betValue)                                         // voisins / tiers : splits purs
+    ? betPerSplit * 35 - betValue
     : 0
 
   const sectorColor = sectorKey ? SECTOR_COLORS[sectorKey] : '#555'
@@ -160,11 +159,7 @@ export default function BetCard({ result, bankroll, profit }: Props) {
                 <span
                   key={`${recKey}-${i}`}
                   className="text-[10px] font-black px-2 py-0.5 rounded border"
-                  style={
-                    split.includes('plein')
-                      ? { borderColor: '#FFD70066', background: '#FFD70011', color: '#FFD700' }
-                      : { borderColor: sectorColor + '55', background: sectorColor + '11', color: sectorColor }
-                  }
+                  style={{ borderColor: sectorColor + '55', background: sectorColor + '11', color: sectorColor }}
                 >
                   {split}
                 </span>

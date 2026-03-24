@@ -27,15 +27,15 @@ export const SECTOR_COLORS: Record<SectorKey, string> = {
   orphelins: '#FF6B35',
 }
 
-// ── Smart Splits ─────────────────────────────────────────────
-// Voisins: 9 jetons standard — 0/2/3 (×2), 4/7, 12/15, 18/21, 19/22,
-//          25/26/28/29 carré (×2), 32/35
-// Tiers: 6 jetons — 5/8, 10/11, 13/16, 23/24, 27/30, 33/36
-// Orphelins: 5 jetons — 1-plein, 6/9, 14/17, 17/20, 31/34
+// ── Smart Pleins ──────────────────────────────────────────────
+// Chaque numéro du secteur joué EN PLEIN (35:1).
+// Voisins  → 17 numéros : même séquence physique que le cylindre
+// Tiers    → 12 numéros
+// Orphelins → 8 numéros
 export const SMART_SPLITS: Record<SectorKey, { splits: [number,number][]; pleins: number[] }> = {
-  voisins:   { splits: [[0,3],[0,2],[4,7],[12,15],[18,21],[19,22],[25,28],[26,29],[32,35]], pleins: [] },
-  tiers:     { splits: [[5,8],[10,11],[13,16],[23,24],[27,30],[33,36]], pleins: [] },
-  orphelins: { splits: [[6,9],[14,17],[17,20],[31,34]],      pleins: [1] },
+  voisins:   { splits: [], pleins: [22,18,29,7,28,12,35,3,26,0,32,15,19,4,21,2,25] },
+  tiers:     { splits: [], pleins: [27,13,36,11,30,8,23,10,5,24,16,33] },
+  orphelins: { splits: [], pleins: [1,20,14,31,9,17,34,6] },
 }
 
 // ── Colour maps ──────────────────────────────────────────────
@@ -60,9 +60,10 @@ export function getZone(n: number): SectorKey | null {
 
 // ── Signal thresholds ────────────────────────────────────────
 export const SIGNAL_THRESHOLDS = {
-  KILLER: 90,   // ≥90% → KILLER mode
-  PLAY:    5,   // ≥5% → PLAY (ultra-sensitivity: réagit dès Z≥0.1)
-  NOISE_GATE: 0, // désactivé — toujours afficher le secteur dominant
+  KILLER:     93,  // ≥93% → KILLER (Z ≥ 2.33σ — anomalie forte)
+  PLAY:       55,  // ≥55% → PLAY  (Z ≥ 1.38σ — tendance claire)
+  MIN_SPINS:  10,  // N minimum avant tout signal
+  NOISE_GATE:  0,  // désactivé — afficher secteur dominant
 } as const
 
 // ── Bet rules ────────────────────────────────────────────────

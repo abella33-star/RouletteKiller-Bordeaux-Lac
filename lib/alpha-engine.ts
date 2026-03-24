@@ -179,17 +179,10 @@ function getStrategy(key: SectorKey, confidence: number, bankroll: number, profi
   totalBet      = bps * n
 
   const splits = allSplits
-  const numSplits = SMART_SPLITS[key].splits.length
-  const numPleins = SMART_SPLITS[key].pleins.length
+  // Tous les numéros joués EN PLEIN (35:1)
+  const potentialGain = bps * 35 - totalBet
 
-  // Gain net si un SPLIT touche : mise_pos × 17 − mise_totale (split paye 17:1)
-  // Gain net si un PLEIN touche : mise_pos × 35 − mise_totale (plein paye 35:1)
-  // On affiche le cas split (majorité des positions) comme gain de référence
-  const potentialGain = numSplits > 0
-    ? bps * 17 - totalBet   // split 17:1
-    : bps * 35 - totalBet   // secteur 100% pleins (rare)
-
-  return { phase, totalBet, bps, n, splits, potentialGain, numSplits, numPleins }
+  return { phase, totalBet, bps, n, splits, potentialGain }
 }
 
 // ── Main ─────────────────────────────────────────────────────
@@ -202,8 +195,8 @@ export function processData(
   const t0   = performance.now()
   const profit = bankroll - initialDeposit
 
-  // Need at least 1 spin to analyze
-  if (spins.length < 1) {
+  // Minimum spins requis avant tout signal
+  if (spins.length < SIGNAL_THRESHOLDS.MIN_SPINS) {
     return _out('WAIT', 0,
       { target:'—', type:'Calibration', splits:[], bet_per_split:0, bet_value:0, num_bets:0 },
       'En attente du premier numéro', 0, '—',
@@ -258,17 +251,7 @@ export function processData(
     status = 'WAIT'
   }
 
-  // Early anomaly override: Z>0.1 → force PLAY (moindre avance suffit)
-  if (best.Z > 0.1 && status === 'WAIT') {
-    status = 'PLAY'
-    confidence = Math.max(confidence, 10)
-  }
-
-  // Force PLAY dès 2 numéros — jamais de Smart Splits vide
-  if (win.length >= 2 && status === 'WAIT') {
-    status = 'PLAY'
-    confidence = Math.max(confidence, 5)
-  }
+  // Plus de force-PLAY permissifs — le seuil PLAY (55%) suffit
 
   if (status === 'WAIT') {
     return _out('WAIT', confidence,
