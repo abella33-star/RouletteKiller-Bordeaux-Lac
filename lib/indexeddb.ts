@@ -53,15 +53,17 @@ const KEY = 'rk_state_v2'
 
 export async function saveState(state: AppState): Promise<void> {
   const persisted: PersistedState = {
-    spins:           state.spins,
-    bankroll:        state.bankroll,
-    initialDeposit:  state.initialDeposit,
-    startBankroll:   state.startBankroll,
-    wins:            state.wins,
-    losses:          state.losses,
-    totalSpins:      state.totalSpins,
-    consecutiveLoss: state.consecutiveLoss,
-    victoryShown:    state.victoryShown,
+    spins:             state.spins,
+    bankroll:          state.bankroll,
+    initialDeposit:    state.initialDeposit,
+    startBankroll:     state.startBankroll,
+    wins:              state.wins,
+    losses:            state.losses,
+    totalSpins:        state.totalSpins,
+    consecutiveLoss:   state.consecutiveLoss,
+    victoryShown:      state.victoryShown,
+    sectorStreak:      state.sectorStreak,
+    lastSignalSector:  state.lastSignalSector,
   }
   try {
     await put<PersistedState>(STORE_STATE, KEY, persisted)
