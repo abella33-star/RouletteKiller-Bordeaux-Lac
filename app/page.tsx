@@ -180,6 +180,9 @@ export default function Home() {
             onOpenSettings={() => setShowSettings(true)}
             onExport={exportData}
             onShowStats={() => setShowStats(true)}
+            onUndo={undoSpin}
+            onReset={resetCycle}
+            canUndo={state.spins.length > 0}
           />
           <SignalCard result={result} bufferSize={bufferSize} />
           <ColorCard prediction={result?.colorPrediction ?? null} />

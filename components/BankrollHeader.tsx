@@ -7,6 +7,9 @@ interface Props {
   onOpenSettings: () => void
   onExport:       () => void
   onShowStats:    () => void
+  onUndo:         () => void
+  onReset:        () => void
+  canUndo:        boolean
 }
 
 function fmt(n: number) {
@@ -14,7 +17,7 @@ function fmt(n: number) {
 }
 
 export default function BankrollHeader({
-  bankroll, initialDeposit, wins, losses, onOpenSettings, onExport, onShowStats,
+  bankroll, initialDeposit, wins, losses, onOpenSettings, onExport, onShowStats, onUndo, onReset, canUndo,
 }: Props) {
   const profit  = bankroll - initialDeposit
   const pct     = initialDeposit > 0 ? (profit / initialDeposit * 100) : 0
@@ -45,6 +48,18 @@ export default function BankrollHeader({
       {/* W/L + actions */}
       <div className="flex items-center gap-1.5">
         <span className="text-[9px] text-muted tabular-nums">{wins}V/{losses}D</span>
+        <button onClick={canUndo ? onUndo : undefined} disabled={!canUndo}
+          className={`bg-card border border-border rounded-lg active:bg-border ${!canUndo ? 'opacity-40' : ''}`}
+          style={{ padding: '4px 7px', fontSize: 13, touchAction: 'manipulation' }}
+          aria-label="Annuler le dernier spin">
+          ↩
+        </button>
+        <button onClick={onReset}
+          className="bg-card border border-border rounded-lg active:bg-border"
+          style={{ padding: '4px 7px', fontSize: 13, touchAction: 'manipulation' }}
+          aria-label="Réinitialiser le cycle">
+          ↺
+        </button>
         <button onClick={onExport}
           className="bg-card border border-border rounded-lg active:bg-border"
           style={{ padding: '4px 7px', fontSize: 13, touchAction: 'manipulation' }}
