@@ -86,6 +86,7 @@ export interface AppState {
   lastEngineResult:  EngineResult | null
   sectorStreak:      number           // nb d'analyses consécutives sur le même secteur
   lastSignalSector:  SectorKey | null // secteur dominant de la dernière analyse
+  bankrollHistory:   number[]         // bankroll après chaque spin (pour sparkline)
 }
 
 // ── IndexedDB ────────────────────────────────────────────────

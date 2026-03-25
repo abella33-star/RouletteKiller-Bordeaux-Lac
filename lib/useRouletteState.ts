@@ -33,6 +33,7 @@ const DEFAULT: AppState = {
   lastEngineResult:  null,
   sectorStreak:      0,
   lastSignalSector:  null,
+  bankrollHistory:   [100],
 }
 
 export function useRouletteState() {
@@ -53,7 +54,12 @@ export function useRouletteState() {
   useEffect(() => {
     loadState().then(saved => {
       if (saved) {
-        _setState(prev => ({ ...prev, ...saved, lastEngineResult: null }))
+        _setState(prev => ({
+          ...prev,
+          ...saved,
+          lastEngineResult: null,
+          bankrollHistory: saved.bankrollHistory ?? [saved.bankroll],
+        }))
       }
       setLoaded(true)
     })
@@ -193,7 +199,8 @@ export function useRouletteState() {
         victoryShown = true
       }
 
-      return { ...prev, spins, totalSpins, bankroll, wins, losses, consecutiveLoss, victoryShown }
+      const bankrollHistory = [...(prev.bankrollHistory ?? []), bankroll]
+      return { ...prev, spins, totalSpins, bankroll, wins, losses, consecutiveLoss, victoryShown, bankrollHistory }
     })
 
     // 4. Run engine with fresh state (setTimeout 0 to read updated state)
@@ -231,6 +238,7 @@ export function useRouletteState() {
       lastEngineResult: null,
       sectorStreak:     0,
       lastSignalSector: null,
+      bankrollHistory:  [prev.bankroll],
     }))
     setHeat({})
     setBufferSize(0)
@@ -240,10 +248,11 @@ export function useRouletteState() {
   const applyBankroll = useCallback((amount: number) => {
     setState(prev => ({
       ...prev,
-      bankroll:       amount,
-      initialDeposit: amount,
-      startBankroll:  amount,
-      victoryShown:   false,
+      bankroll:        amount,
+      initialDeposit:  amount,
+      startBankroll:   amount,
+      victoryShown:    false,
+      bankrollHistory: [amount],
     }))
     setShowSettings(false)
   }, [setState])
@@ -260,6 +269,34 @@ export function useRouletteState() {
       return { ...prev, bankroll, wins: prev.wins+1, consecutiveLoss:0 }
     })
   }, [setState])
+
+  // ── Export session data as JSON ───────────────────────────────
+  const exportData = useCallback(() => {
+    _setState(current => {
+      const payload = {
+        exportedAt:      new Date().toISOString(),
+        version:         '2.0',
+        spins:           current.spins,
+        bankroll:        current.bankroll,
+        initialDeposit:  current.initialDeposit,
+        startBankroll:   current.startBankroll,
+        wins:            current.wins,
+        losses:          current.losses,
+        totalSpins:      current.totalSpins,
+        bankrollHistory: current.bankrollHistory,
+      }
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
+      const url  = URL.createObjectURL(blob)
+      const a    = document.createElement('a')
+      a.href     = url
+      a.download = `roulette-session-${Date.now()}.json`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      return current
+    })
+  }, [])
 
   const recordLoss = useCallback((stake: number) => {
     setState(prev => ({
@@ -283,5 +320,6 @@ export function useRouletteState() {
     applyBankroll,
     recordWin,
     recordLoss,
+    exportData,
   }
 }

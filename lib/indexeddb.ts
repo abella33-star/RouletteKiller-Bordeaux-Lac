@@ -64,6 +64,7 @@ export async function saveState(state: AppState): Promise<void> {
     victoryShown:      state.victoryShown,
     sectorStreak:      state.sectorStreak,
     lastSignalSector:  state.lastSignalSector,
+    bankrollHistory:   state.bankrollHistory,
   }
   try {
     await put<PersistedState>(STORE_STATE, KEY, persisted)

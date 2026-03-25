@@ -7,6 +7,7 @@ import SignalCard     from '@/components/SignalCard'
 import BetCard        from '@/components/BetCard'
 import NumberPad      from '@/components/NumberPad'
 import ControlBar     from '@/components/ControlBar'
+import StatsPanel     from '@/components/StatsPanel'
 
 // Heatmap loaded client-side only (SVG, no SSR)
 const SectorHeatmap = dynamic(() => import('@/components/SectorHeatmap'), { ssr: false })
@@ -95,11 +96,14 @@ function VictoryOverlay({
 
 // ── Main Page ──────────────────────────────────────────────────
 export default function Home() {
+  const [showStats, setShowStats] = useState(false)
+
   const {
     state, heat, bufferSize, loaded,
     showVictory, setShowVictory,
     showSettings, setShowSettings,
     addSpin, undoSpin, resetCycle, applyBankroll,
+    exportData,
   } = useRouletteState()
 
   if (!loaded) {
@@ -127,6 +131,16 @@ export default function Home() {
           current={state.bankroll}
           onApply={applyBankroll}
           onClose={() => setShowSettings(false)}
+        />
+      )}
+      {showStats && (
+        <StatsPanel
+          spins={state.spins}
+          bankrollHistory={state.bankrollHistory}
+          initialDeposit={state.initialDeposit}
+          colorTest={result?.colorTest ?? null}
+          parityTest={result?.parityTest ?? null}
+          onClose={() => setShowStats(false)}
         />
       )}
 
@@ -190,6 +204,8 @@ export default function Home() {
             <ControlBar
               onUndo={undoSpin}
               onReset={resetCycle}
+              onExport={exportData}
+              onShowStats={() => setShowStats(true)}
               canUndo={state.spins.length > 0}
               latency={result?.latency}
             />
