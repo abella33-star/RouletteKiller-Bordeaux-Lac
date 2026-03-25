@@ -430,8 +430,6 @@ export function processData(
   if (!cTest.isNoise)  parts.push(`χ²-col p=${cTest.pValue.toFixed(3)}`)
   if (!pTest.isNoise)  parts.push(`χ²-par p=${pTest.pValue.toFixed(3)}`)
 
-  const colorPred = analyzeColorBias(spins)
-
   return {
     ..._out(
       status, confidence,
