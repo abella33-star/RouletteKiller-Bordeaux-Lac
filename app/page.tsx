@@ -8,6 +8,7 @@ import BetCard        from '@/components/BetCard'
 import NumberPad      from '@/components/NumberPad'
 import ControlBar     from '@/components/ControlBar'
 import StatsPanel     from '@/components/StatsPanel'
+import ColorCard      from '@/components/ColorCard'
 
 // Heatmap loaded client-side only (SVG, no SSR)
 const SectorHeatmap = dynamic(() => import('@/components/SectorHeatmap'), { ssr: false })
@@ -178,6 +179,7 @@ export default function Home() {
             onOpenSettings={() => setShowSettings(true)}
           />
           <SignalCard result={result} bufferSize={bufferSize} />
+          <ColorCard prediction={result?.colorPrediction ?? null} />
           <BetCard
             key={`${state.spins.length}-${result?.recommendation?.target ?? 'wait'}`}
             result={result}

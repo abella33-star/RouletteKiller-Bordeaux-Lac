@@ -50,6 +50,19 @@ export interface SmartSplitRecommendation {
   num_bets:     number
 }
 
+// ── Color Prediction ─────────────────────────────────────────
+export interface ColorPrediction {
+  rougeProb:    number                           // % estimé P(rouge) pour le prochain spin
+  noirProb:     number                           // % estimé P(noir)
+  signal:       'ROUGE' | 'NOIR' | 'NEUTRE'     // signal dominant
+  confidence:   number                           // force du signal 0-100
+  streakCount:  number                           // longueur série actuelle
+  streakColor:  'rouge' | 'noir' | 'vert' | null
+  ewmaRouge:    number                           // EWMA rouge pondéré en %
+  zScore:       number                           // Z-score déviation rouge/baseline
+  conditionalP: number | null                    // P(même couleur | couleur précédente) en %
+}
+
 export interface SubArcResult {
   numbers:       number[]   // numéros consécutifs du cylindre dans l'arc chaud
   arcZ:          number     // Z-score de cet arc
@@ -68,8 +81,9 @@ export interface EngineResult {
   parityTest:           ChiSquareResult | null
   offsetAnalysis:       OffsetAnalysis | null
   latency:              number
-  dualWindowConfirmed:  boolean        // les 2 fenêtres (8 et 24 spins) désignent le même secteur
-  subArc:               SubArcResult | null  // arc chaud détecté (null si WAIT/NOISE)
+  dualWindowConfirmed:  boolean             // les 2 fenêtres (8 et 24 spins) désignent le même secteur
+  subArc:               SubArcResult | null // arc chaud détecté (null si WAIT/NOISE)
+  colorPrediction:      ColorPrediction | null  // analyse couleur rouge/noir
 }
 
 // ── App State ────────────────────────────────────────────────

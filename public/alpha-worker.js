@@ -205,6 +205,79 @@ function findHotSubArc(win, sectorKey) {
   };
 }
 
+// ── Colour Bias Analysis ──────────────────────────────────────
+// 4 méthodes : EWMA + Z-score binomial dual-fenêtre + Streak + Markov
+
+function analyzeColorBias(spins) {
+  if (spins.length < 5) return null;
+
+  const win = spins.slice(-Math.min(24, spins.length));
+  const n   = win.length;
+  const p0  = 18 / 37;
+
+  // 1. EWMA (λ=0.75)
+  let ewma = p0;
+  for (const s of win) {
+    ewma = RECENCY_LAMBDA * ewma + (1 - RECENCY_LAMBDA) * (RED_NUMBERS.includes(s.number) ? 1 : 0);
+  }
+
+  // 2. Z-score dual fenêtre
+  const winShort = spins.slice(-Math.min(12, spins.length));
+  const kS = winShort.filter(s => RED_NUMBERS.includes(s.number)).length;
+  const nS = winShort.length;
+  const zS = nS > 0 ? (kS - nS * p0) / Math.sqrt(nS * p0 * (1 - p0)) : 0;
+
+  const kL = win.filter(s => RED_NUMBERS.includes(s.number)).length;
+  const sigmaL = Math.sqrt(n * p0 * (1 - p0));
+  const zL = sigmaL > 0 ? (kL - n * p0) / sigmaL : 0;
+
+  const zComposite = Math.sign(zS + zL) * Math.sqrt(Math.abs(zS) * Math.abs(zL));
+
+  // 3. Streak actuelle
+  let streakCount = 0, streakColor = null;
+  for (let i = spins.length - 1; i >= 0; i--) {
+    const c = spins[i].color;
+    if (streakCount === 0) { streakColor = c; streakCount = 1; }
+    else if (c === streakColor) streakCount++;
+    else break;
+  }
+
+  // 4. Markov P(même couleur | couleur précédente)
+  const colorOnly = spins.filter(s => s.number !== 0);
+  let sameCount = 0, pairCount = 0;
+  for (let i = 1; i < colorOnly.length; i++) {
+    const prevR = RED_NUMBERS.includes(colorOnly[i - 1].number);
+    const currR = RED_NUMBERS.includes(colorOnly[i].number);
+    pairCount++;
+    if (prevR === currR) sameCount++;
+  }
+  const conditionalP = pairCount >= 10 ? Math.round(sameCount / pairCount * 100) : null;
+
+  // 5. Probabilités estimées
+  const rougeProb = Math.round(Math.min(99, Math.max(1, ewma * 100)) * 10) / 10;
+  const noirProb  = Math.round(Math.min(99, Math.max(1, (1 - ewma - 1 / 37) * 100)) * 10) / 10;
+
+  // 6. Signal combiné
+  let signal = 'NEUTRE', confidence = 50;
+  if (n >= 12) {
+    if (ewma > p0 + 0.04 && zComposite > 0.8) {
+      signal     = 'ROUGE';
+      confidence = Math.round(normalCDF(zComposite) * 100);
+    } else if (ewma < p0 - 0.04 && zComposite < -0.8) {
+      signal     = 'NOIR';
+      confidence = Math.round(normalCDF(-zComposite) * 100);
+    }
+  }
+
+  return {
+    rougeProb, noirProb, signal, confidence,
+    streakCount, streakColor,
+    ewmaRouge:    Math.round(ewma * 1000) / 10,
+    zScore:       Math.round(zComposite * 100) / 100,
+    conditionalP,
+  };
+}
+
 // ── Strategy ─────────────────────────────────────────────────
 
 function getExecutionStrategy(bankroll, profit, confidence, bestSector, subArc) {
@@ -235,11 +308,16 @@ function getExecutionStrategy(bankroll, profit, confidence, bestSector, subArc) 
 function processData(history, bankroll, initialDeposit, profit) {
   const t0 = performance.now();
 
+  const colorPred = analyzeColorBias(history);
+
   if (history.length < MIN_SPINS) {
-    return _out('WAIT', 0,
-      { target:'—', type:'Calibration', splits:[], bet_per_split:0, bet_value:0, num_bets:0 },
-      `En attente (${history.length}/${MIN_SPINS} spins)`,
-      0, '—', null, null, null, null, false, null, performance.now()-t0
+    return Object.assign(
+      _out('WAIT', 0,
+        { target:'—', type:'Calibration', splits:[], bet_per_split:0, bet_value:0, num_bets:0 },
+        `En attente (${history.length}/${MIN_SPINS} spins)`,
+        0, '—', null, null, null, null, false, null, performance.now()-t0
+      ),
+      { colorPrediction: colorPred }
     );
   }
 
@@ -274,10 +352,13 @@ function processData(history, bankroll, initialDeposit, profit) {
 
   // Noise gate (désactivé à seuil 0)
   if (noiseGlobal && confidence < 0 && best.Z <= 2.5) {
-    return _out('NOISE', confidence,
-      { target:'NOISE', type:'—', splits:[], bet_per_split:0, bet_value:0, num_bets:0 },
-      `Distributions aléatoires χ²-col p=${cTest.pValue.toFixed(3)}, χ²-par p=${pTest.pValue.toFixed(3)}`,
-      0, '—', sectorData, cTest, pTest, offset, dualWindowConfirmed, null, performance.now()-t0
+    return Object.assign(
+      _out('NOISE', confidence,
+        { target:'NOISE', type:'—', splits:[], bet_per_split:0, bet_value:0, num_bets:0 },
+        `Distributions aléatoires χ²-col p=${cTest.pValue.toFixed(3)}, χ²-par p=${pTest.pValue.toFixed(3)}`,
+        0, '—', sectorData, cTest, pTest, offset, dualWindowConfirmed, null, performance.now()-t0
+      ),
+      { colorPrediction: colorPred }
     );
   }
 
@@ -287,10 +368,13 @@ function processData(history, bankroll, initialDeposit, profit) {
   else                                      status = 'WAIT';
 
   if (status === 'WAIT') {
-    return _out('WAIT', confidence,
-      { target: SECTOR_LABELS[bestKey], type:'Attendre', splits:[], bet_per_split:0, bet_value:0, num_bets:0 },
-      `Signal ${confidence}% (Z=${best.Z.toFixed(2)}σ) — attendre confirmation${dualWindowConfirmed ? ' ✓ dual' : ''}`,
-      0, '—', sectorData, cTest, pTest, offset, dualWindowConfirmed, null, performance.now()-t0
+    return Object.assign(
+      _out('WAIT', confidence,
+        { target: SECTOR_LABELS[bestKey], type:'Attendre', splits:[], bet_per_split:0, bet_value:0, num_bets:0 },
+        `Signal ${confidence}% (Z=${best.Z.toFixed(2)}σ) — attendre confirmation${dualWindowConfirmed ? ' ✓ dual' : ''}`,
+        0, '—', sectorData, cTest, pTest, offset, dualWindowConfirmed, null, performance.now()-t0
+      ),
+      { colorPrediction: colorPred }
     );
   }
 
@@ -309,17 +393,20 @@ function processData(history, bankroll, initialDeposit, profit) {
 
   const type = strat.phase === 'Sniper' ? '🎯 Smart Pleins SNIPER' : 'Smart Pleins Prudent';
 
-  return _out(
-    status, confidence,
-    { target: SECTOR_LABELS[bestKey], type,
-      splits: strat.splits, bet_per_split: strat.betPerSplit,
-      bet_value: strat.totalBet, num_bets: strat.numBets },
-    parts.join(' · '),
-    strat.potentialGain,
-    strat.phase,
-    sectorData, cTest, pTest, offset,
-    dualWindowConfirmed, subArc,
-    performance.now()-t0
+  return Object.assign(
+    _out(
+      status, confidence,
+      { target: SECTOR_LABELS[bestKey], type,
+        splits: strat.splits, bet_per_split: strat.betPerSplit,
+        bet_value: strat.totalBet, num_bets: strat.numBets },
+      parts.join(' · '),
+      strat.potentialGain,
+      strat.phase,
+      sectorData, cTest, pTest, offset,
+      dualWindowConfirmed, subArc,
+      performance.now()-t0
+    ),
+    { colorPrediction: colorPred }
   );
 }
 
@@ -339,6 +426,7 @@ function _out(status, confidence, recommendation, reason, potential_gain, phase,
     offsetAnalysis,
     dualWindowConfirmed: dualWindowConfirmed || false,
     subArc: subArc || null,
+    colorPrediction: null,
     latency: Math.round((latency || 0) * 100) / 100,
   };
 }
