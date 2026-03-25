@@ -209,12 +209,7 @@ export default function Home() {
           </div>
           {/* Contrôles toujours visibles en bas */}
           <div className="flex-shrink-0" style={{ marginTop: 6 }}>
-            <ControlBar
-              onUndo={undoSpin}
-              onReset={resetCycle}
-              canUndo={state.spins.length > 0}
-              latency={result?.latency}
-            />
+            <ControlBar latency={result?.latency} />
           </div>
         </div>
 
