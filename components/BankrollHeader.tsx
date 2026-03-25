@@ -5,6 +5,8 @@ interface Props {
   wins:           number
   losses:         number
   onOpenSettings: () => void
+  onExport:       () => void
+  onShowStats:    () => void
 }
 
 function fmt(n: number) {
@@ -12,7 +14,7 @@ function fmt(n: number) {
 }
 
 export default function BankrollHeader({
-  bankroll, initialDeposit, wins, losses, onOpenSettings,
+  bankroll, initialDeposit, wins, losses, onOpenSettings, onExport, onShowStats,
 }: Props) {
   const profit  = bankroll - initialDeposit
   const pct     = initialDeposit > 0 ? (profit / initialDeposit * 100) : 0
@@ -40,15 +42,25 @@ export default function BankrollHeader({
         </span>
       </div>
 
-      {/* W/L + settings */}
-      <div className="flex items-center gap-2">
+      {/* W/L + actions */}
+      <div className="flex items-center gap-1.5">
         <span className="text-[9px] text-muted tabular-nums">{wins}V/{losses}D</span>
-        <button
-          onClick={onOpenSettings}
+        <button onClick={onExport}
           className="bg-card border border-border rounded-lg active:bg-border"
-          style={{ padding: '4px 8px', fontSize: 14, touchAction: 'manipulation' }}
-          aria-label="Paramètres bankroll"
-        >
+          style={{ padding: '4px 7px', fontSize: 13, touchAction: 'manipulation' }}
+          aria-label="Exporter les données">
+          📤
+        </button>
+        <button onClick={onShowStats}
+          className="bg-card border border-border rounded-lg active:bg-border"
+          style={{ padding: '4px 7px', fontSize: 13, touchAction: 'manipulation' }}
+          aria-label="Statistiques">
+          📊
+        </button>
+        <button onClick={onOpenSettings}
+          className="bg-card border border-border rounded-lg active:bg-border"
+          style={{ padding: '4px 7px', fontSize: 13, touchAction: 'manipulation' }}
+          aria-label="Paramètres bankroll">
           💰
         </button>
       </div>

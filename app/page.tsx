@@ -178,6 +178,8 @@ export default function Home() {
             wins={state.wins}
             losses={state.losses}
             onOpenSettings={() => setShowSettings(true)}
+            onExport={exportData}
+            onShowStats={() => setShowStats(true)}
           />
           <SignalCard result={result} bufferSize={bufferSize} />
           <ColorCard prediction={result?.colorPrediction ?? null} />
@@ -207,8 +209,6 @@ export default function Home() {
             <ControlBar
               onUndo={undoSpin}
               onReset={resetCycle}
-              onExport={exportData}
-              onShowStats={() => setShowStats(true)}
               canUndo={state.spins.length > 0}
               latency={result?.latency}
             />
