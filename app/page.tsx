@@ -139,6 +139,7 @@ export default function Home() {
           spins={state.spins}
           bankrollHistory={state.bankrollHistory}
           initialDeposit={state.initialDeposit}
+          bankroll={state.bankroll}
           colorTest={result?.colorTest ?? null}
           parityTest={result?.parityTest ?? null}
           onClose={() => setShowStats(false)}

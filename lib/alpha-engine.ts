@@ -8,7 +8,7 @@
  *   C. dualWindowDominant()  — confirmation courte (8) + longue (24) fenêtre
  *   D. findHotSubArc()       — arc consécutif le plus chaud dans le secteur
  */
-import type { Spin, EngineResult, SectorData, SectorKey, OffsetAnalysis, SubArcResult, ColorPrediction } from './types'
+import type { Spin, EngineResult, SectorData, SectorKey, OffsetAnalysis, SubArcResult, ColorPrediction, ChanceZone, MonteCarloResult } from './types'
 import {
   CYLINDER, SMART_SPLITS, SECTOR_LABELS, RED_NUMBERS, EVEN_NUMBERS,
   WHEEL_POS, SIGNAL_THRESHOLDS, BET_RULES, SUB_ARC_SIZES,
@@ -470,6 +470,128 @@ function _out(
     dualWindowConfirmed, subArc,
     colorPrediction: null,
     latency: Math.round(latency * 100) / 100,
+  }
+}
+
+// ── All Chance Zones Analysis ─────────────────────────────────
+// Calcule le Z-score et la p-value pour toutes les catégories de mise :
+// Chances simples (rouge, noir, pair, impair, manque, passe)
+// Douzaines (1-12, 13-24, 25-36)
+// Colonnes (col 1, 2, 3)
+
+const _BLACK  = [2,4,6,8,10,11,13,15,17,20,22,24,26,28,29,31,33,35]
+const _EVEN   = [2,4,6,8,10,12,14,16,18,20,22,24,26,28,30,32,34,36]
+const _ODD    = [1,3,5,7,9,11,13,15,17,19,21,23,25,27,29,31,33,35]
+const _MANQUE = Array.from({ length: 18 }, (_, i) => i + 1)
+const _PASSE  = Array.from({ length: 18 }, (_, i) => i + 19)
+const _DOZ1   = Array.from({ length: 12 }, (_, i) => i + 1)
+const _DOZ2   = Array.from({ length: 12 }, (_, i) => i + 13)
+const _DOZ3   = Array.from({ length: 12 }, (_, i) => i + 25)
+const _COL1   = [1,4,7,10,13,16,19,22,25,28,31,34]
+const _COL2   = [2,5,8,11,14,17,20,23,26,29,32,35]
+const _COL3   = [3,6,9,12,15,18,21,24,27,30,33,36]
+
+const _CHANCE_DEFS: Array<{ name: string; cat: ChanceZone['category']; nums: number[]; p: number }> = [
+  { name: 'Rouge',    cat: 'simple',   nums: Array.from(RED_NUMBERS), p: 18/37 },
+  { name: 'Noir',     cat: 'simple',   nums: _BLACK,   p: 18/37 },
+  { name: 'Pair',     cat: 'simple',   nums: _EVEN,    p: 18/37 },
+  { name: 'Impair',   cat: 'simple',   nums: _ODD,     p: 18/37 },
+  { name: 'Manque',   cat: 'simple',   nums: _MANQUE,  p: 18/37 },
+  { name: 'Passe',    cat: 'simple',   nums: _PASSE,   p: 18/37 },
+  { name: '1re Dz',  cat: 'douzaine', nums: _DOZ1,    p: 12/37 },
+  { name: '2e Dz',   cat: 'douzaine', nums: _DOZ2,    p: 12/37 },
+  { name: '3e Dz',   cat: 'douzaine', nums: _DOZ3,    p: 12/37 },
+  { name: 'Col 1',    cat: 'colonne',  nums: _COL1,    p: 12/37 },
+  { name: 'Col 2',    cat: 'colonne',  nums: _COL2,    p: 12/37 },
+  { name: 'Col 3',    cat: 'colonne',  nums: _COL3,    p: 12/37 },
+]
+
+export function analyzeAllChances(spins: Spin[]): ChanceZone[] {
+  const n = spins.length
+  if (n < 5) return []
+
+  return _CHANCE_DEFS.map(def => {
+    const obs     = spins.filter(s => def.nums.includes(s.number)).length
+    const exp     = n * def.p
+    const sigma   = Math.sqrt(n * def.p * (1 - def.p))
+    const z       = sigma > 0 ? (obs - exp) / sigma : 0
+    // p-value bilatérale : probabilité d'observer un écart ≥ |Z| par hasard pur
+    const pValue  = 2 * (1 - normalCDF(Math.abs(z)))
+    return {
+      name:        def.name,
+      category:    def.cat,
+      observed:    obs,
+      expected:    Math.round(exp * 10) / 10,
+      probability: def.p,
+      zScore:      Math.round(z * 100) / 100,
+      pValue:      Math.round(pValue * 1000) / 1000,
+      sigmaLevel:  Math.round(Math.abs(z) * 10) / 10,
+    }
+  }).sort((a, b) => Math.abs(b.zScore) - Math.abs(a.zScore))
+}
+
+// ── Monte Carlo — Simulation de stratégie de mise ─────────────
+/**
+ * Simule N sessions de M spins avec une mise fixe (fraction de bankroll).
+ * Montre empiriquement la distribution des bankrolls finales et la probabilité
+ * de ruine, confirmant l'espérance mathématique négative (−2.70% / spin sur EC).
+ *
+ * P(gagner un spin chance simple) = 18/37 ≈ 48.65%
+ * EV par unité misée = 18/37 − 19/37 = −1/37 ≈ −2.70%
+ */
+export function runMonteCarlo(
+  initialBankroll:  number,
+  betFraction:      number,   // ex : 0.02 = 2% de la bankroll par spin
+  spinsPerSession:  number,
+  numSimulations:   number = 1000,
+): MonteCarloResult {
+  const P_WIN = 18 / 37   // chance simple (rouge/noir, pair/impair, manque/passe)
+  const results: number[] = []
+
+  for (let sim = 0; sim < numSimulations; sim++) {
+    let br = initialBankroll
+    for (let s = 0; s < spinsPerSession; s++) {
+      if (br <= 0) break
+      const bet = Math.max(0.01, br * betFraction)
+      br = Math.random() < P_WIN ? br + bet : br - bet
+    }
+    results.push(Math.max(0, br))
+  }
+
+  results.sort((a, b) => a - b)
+
+  const pct = (v: number) => Math.round(v / initialBankroll * 1000) / 10
+
+  const ruin    = results.filter(r => r <= 0).length / numSimulations * 100
+  const median  = pct(results[Math.floor(numSimulations / 2)])
+  const mean    = pct(results.reduce((s, r) => s + r, 0) / numSimulations)
+  const p5      = pct(results[Math.floor(numSimulations * 0.05)])
+  const p95     = pct(results[Math.floor(numSimulations * 0.95)])
+
+  // Histogramme : 20 buckets de 0% à 200% de la bankroll initiale (10% chacun)
+  const rawHist = new Array(20).fill(0)
+  for (const r of results) {
+    const bucket = Math.min(19, Math.floor(r / initialBankroll * 10))
+    rawHist[bucket]++
+  }
+  const histMax = Math.max(...rawHist)
+  const histogram = rawHist.map(v => histMax > 0 ? v / histMax : 0)
+
+  // EV théorique : sur M spins avec fraction f, EV = B₀ × (1 + EV_unitaire)^M
+  // EV_unitaire = 18/37×f − 19/37×f = −f/37
+  const theoreticalEV = initialBankroll * Math.pow(1 - betFraction / 37, spinsPerSession) - initialBankroll
+
+  return {
+    simulations:     numSimulations,
+    spinsPerSession,
+    betFraction,
+    ruinProbability: Math.round(ruin * 10) / 10,
+    medianFinal:     median,
+    meanFinal:       mean,
+    p5,
+    p95,
+    histogram,
+    theoreticalEV:   Math.round(theoreticalEV * 100) / 100,
   }
 }
 

@@ -103,6 +103,32 @@ export interface AppState {
   bankrollHistory:   number[]         // bankroll après chaque spin (pour sparkline)
 }
 
+// ── Chance Zone (toutes catégories) ─────────────────────────
+export interface ChanceZone {
+  name:        string
+  category:    'simple' | 'douzaine' | 'colonne'
+  observed:    number
+  expected:    number          // n × p (théorique)
+  probability: number          // p théorique (0–1)
+  zScore:      number          // écart en σ
+  pValue:      number          // p-value bilatérale
+  sigmaLevel:  number          // |Z| arrondi à 1 décimale
+}
+
+// ── Monte Carlo ───────────────────────────────────────────────
+export interface MonteCarloResult {
+  simulations:     number
+  spinsPerSession: number
+  betFraction:     number   // fraction de bankroll misée par spin
+  ruinProbability: number   // % sessions finissant à 0
+  medianFinal:     number   // médiane finale en % de la bankroll initiale
+  meanFinal:       number   // moyenne finale en %
+  p5:              number   // 5e percentile en %
+  p95:             number   // 95e percentile en %
+  histogram:       number[] // 20 buckets de 0% à 200%, normalisés 0-1
+  theoreticalEV:   number   // EV théorique en % de bankroll initiale
+}
+
 // ── IndexedDB ────────────────────────────────────────────────
 export interface DBSession {
   id:           string
